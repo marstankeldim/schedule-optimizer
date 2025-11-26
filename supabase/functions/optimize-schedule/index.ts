@@ -56,11 +56,26 @@ serve(async (req) => {
     console.log("Planning period:", planningPeriod);
     console.log("User ID:", userId);
 
-    // Fetch calendar events for the user if userId is provided
+    // Fetch user preferences and calendar events
     let calendarEvents: CalendarEvent[] = [];
+    let userPreferences: any = null;
+    
     if (userId) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       
+      // Fetch user preferences
+      const { data: prefsData } = await supabase
+        .from("user_preferences")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+      
+      if (prefsData) {
+        userPreferences = prefsData;
+        console.log("User preferences loaded:", userPreferences);
+      }
+      
+      // Fetch calendar events
       // Get date range based on planning period
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -119,17 +134,41 @@ serve(async (req) => {
         break;
     }
     
-    // Add meal break suggestions based on time
+    // Add meal break suggestions based on user preferences or defaults
     const [startHour] = startTime.split(':').map(Number);
+    const breakfastTime = userPreferences?.breakfast_time || "08:00";
+    const breakfastDuration = userPreferences?.breakfast_duration || 20;
+    const lunchTime = userPreferences?.lunch_time || "12:30";
+    const lunchDuration = userPreferences?.lunch_duration || 60;
+    const dinnerTime = userPreferences?.dinner_time || "18:30";
+    const dinnerDuration = userPreferences?.dinner_duration || 60;
+    const enableNutrition = userPreferences?.enable_nutrition_reminders !== false;
+    const enableHydration = userPreferences?.enable_hydration_reminders !== false;
+    const hydrationInterval = userPreferences?.hydration_interval || 120;
+    
     let mealBreakInstructions = "\n\nMEAL BREAKS: ";
     
     if (startHour <= 9) {
-      mealBreakInstructions += "If the schedule starts before 9am, consider adding a 15-20 minute breakfast break around 7:30-8:30am. ";
+      mealBreakInstructions += `Add a ${breakfastDuration}-minute breakfast break at ${breakfastTime}. `;
     }
     
-    mealBreakInstructions += "If the schedule extends past noon, add a 45-60 minute lunch break between 12:00-2:00pm. ";
-    mealBreakInstructions += "If the schedule extends past 6pm, consider adding a 45-60 minute dinner break between 6:00-8:00pm.";
+    mealBreakInstructions += `Add a ${lunchDuration}-minute lunch break at ${lunchTime}. `;
+    mealBreakInstructions += `If the schedule extends past 6pm, add a ${dinnerDuration}-minute dinner break at ${dinnerTime}.`;
     mealBreakInstructions += "\nMeal breaks should be labeled as 'Breakfast Break', 'Lunch Break', or 'Dinner Break' with isBreak: true.";
+    
+    // Add nutrition reminders
+    if (enableNutrition) {
+      mealBreakInstructions += "\n\nNUTRITION REMINDERS: For each meal break, add a short description encouraging healthy eating. For example:";
+      mealBreakInstructions += "\n- Breakfast: 'Time for a nutritious breakfast! Include protein and whole grains.'";
+      mealBreakInstructions += "\n- Lunch: 'Enjoy a balanced lunch with vegetables, protein, and complex carbs.'";
+      mealBreakInstructions += "\n- Dinner: 'Have a healthy dinner. Keep it light if it's late in the evening.'";
+      mealBreakInstructions += "\nInclude these nutrition tips in the task title for meal breaks.";
+    }
+    
+    // Add hydration reminders
+    if (enableHydration) {
+      mealBreakInstructions += `\n\nHYDRATION REMINDERS: Add 5-minute hydration breaks every ${hydrationInterval} minutes throughout the schedule. Label them as 'Hydration Break 💧 - Drink water to stay energized!' with isBreak: true.`;
+    }
     
     breakInstructions += mealBreakInstructions;
 
