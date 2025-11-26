@@ -32,6 +32,7 @@ const Index = () => {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [startTime, setStartTime] = useState("09:00");
   const [breakPreference, setBreakPreference] = useState<"none" | "short" | "long" | "auto">("auto");
+  const [planningPeriod, setPlanningPeriod] = useState<"tomorrow" | "week">("tomorrow");
   const [scheduleName, setScheduleName] = useState("");
   const [savedSchedules, setSavedSchedules] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -629,6 +630,32 @@ const Index = () => {
             <div className="lg:col-span-2 space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
+              
+              {/* Planning Period Selector */}
+              <Card className="p-4 mb-4">
+                <Label className="text-sm font-medium mb-3 block">Planning Period</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={planningPeriod === "tomorrow" ? "default" : "outline"}
+                    onClick={() => setPlanningPeriod("tomorrow")}
+                    className="flex-1"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Tomorrow
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={planningPeriod === "week" ? "default" : "outline"}
+                    onClick={() => setPlanningPeriod("week")}
+                    className="flex-1"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Whole Week
+                  </Button>
+                </div>
+              </Card>
+
               <TaskInput 
                 onAddTask={handleAddTask}
                 userId={session?.user?.id}
