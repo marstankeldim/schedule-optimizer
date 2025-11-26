@@ -110,6 +110,57 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_tasks: {
+        Row: {
+          created_at: string
+          duration: number
+          end_date: string | null
+          energy_level: string
+          id: string
+          is_active: boolean
+          last_generated_date: string | null
+          priority: string
+          recurrence_pattern: Json
+          recurrence_type: Database["public"]["Enums"]["recurrence_type"]
+          start_date: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration: number
+          end_date?: string | null
+          energy_level: string
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          priority: string
+          recurrence_pattern?: Json
+          recurrence_type: Database["public"]["Enums"]["recurrence_type"]
+          start_date?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number
+          end_date?: string | null
+          energy_level?: string
+          id?: string
+          is_active?: boolean
+          last_generated_date?: string | null
+          priority?: string
+          recurrence_pattern?: Json
+          recurrence_type?: Database["public"]["Enums"]["recurrence_type"]
+          start_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       schedules: {
         Row: {
           break_preference: string
@@ -178,7 +229,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      recurrence_type: "daily" | "weekly" | "monthly" | "custom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -305,6 +356,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      recurrence_type: ["daily", "weekly", "monthly", "custom"],
+    },
   },
 } as const

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskInput, Task } from "@/components/TaskInput";
 import { TaskTemplates } from "@/components/TaskTemplates";
+import { RecurringTasks } from "@/components/RecurringTasks";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
@@ -27,6 +28,7 @@ const Index = () => {
   const [savedSchedules, setSavedSchedules] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<{ task: ScheduledTask; timeoutId: NodeJS.Timeout } | null>(null);
+  const [recurringTasksKey, setRecurringTasksKey] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
@@ -132,6 +134,44 @@ const Index = () => {
       toast({
         title: "Task added",
         description: `"${task.title}" has been added to your task list`,
+      });
+    }
+  };
+
+  const handleAddMultipleTasks = async (newTasks: Omit<Task, "id">[]) => {
+    if (!session?.user) return;
+
+    const tasksToInsert = newTasks.map((task) => ({
+      user_id: session.user.id,
+      title: task.title,
+      duration: task.duration,
+      energy_level: task.energyLevel,
+      priority: task.priority,
+    }));
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert(tasksToInsert)
+      .select();
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save tasks",
+        variant: "destructive",
+      });
+    } else {
+      const addedTasks: Task[] = data.map((d) => ({
+        id: d.id,
+        title: d.title,
+        duration: d.duration,
+        energyLevel: d.energy_level as "high" | "medium" | "low",
+        priority: d.priority as "high" | "medium" | "low",
+      }));
+      setTasks([...tasks, ...addedTasks]);
+      toast({
+        title: "Tasks added",
+        description: `${addedTasks.length} task(s) added to your task list`,
       });
     }
   };
@@ -404,11 +444,24 @@ const Index = () => {
             <div className="lg:col-span-2 space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
-              <TaskInput onAddTask={handleAddTask} />
+              <TaskInput 
+                onAddTask={handleAddTask}
+                userId={session?.user?.id}
+                onRecurringCreated={() => setRecurringTasksKey(prev => prev + 1)}
+              />
             </div>
 
             {/* Task Templates */}
             <TaskTemplates onSelectTemplate={handleAddTask} />
+
+            {/* Recurring Tasks */}
+            {session?.user && (
+              <RecurringTasks 
+                key={recurringTasksKey}
+                userId={session.user.id}
+                onGenerateTasks={handleAddMultipleTasks}
+              />
+            )}
 
             {/* Task List */}
             {tasks.length > 0 && (
