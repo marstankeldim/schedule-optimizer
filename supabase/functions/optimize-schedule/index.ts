@@ -37,7 +37,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tasks, startTime = "09:00", breakPreference = "auto", userId, planningPeriod = "tomorrow" } = await req.json();
+    const { tasks, startTime = "09:00", breakPreference = "auto", userId, planningPeriod = "tomorrow", workdays } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -126,6 +126,9 @@ serve(async (req) => {
 
     if (planningPeriod === "week") {
       // Weekly planning prompt
+      const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      const selectedWorkdays = workdays && workdays.length > 0 ? workdays : daysOfWeek;
+
       responseFormat = `{
   "weeklySchedule": {
     "Monday": [/* array of tasks with startTime, endTime, etc. */],
@@ -138,20 +141,23 @@ serve(async (req) => {
   }
 }`;
 
-      systemPrompt = `You are an expert weekly schedule optimizer. Given a list of tasks, distribute them intelligently across a 7-day week (Monday through Sunday), starting each day at ${startTime}.
+      systemPrompt = `You are an expert weekly schedule optimizer. Given a list of tasks, distribute them intelligently across the selected workdays of the week, starting each day at ${startTime}.
+
+IMPORTANT: The user has selected these workdays: ${selectedWorkdays.join(", ")}. Do NOT schedule ANY tasks on non-workdays. Non-workdays should have empty arrays.
 
 ${calendarEventsInfo}
 
 Weekly optimization rules:
-1. Distribute tasks evenly across the week to prevent burnout
-2. Schedule high-priority tasks early in the week (Monday-Wednesday)
-3. Schedule high-energy tasks during morning hours (9am-12pm) on each day
-4. Lighter tasks and low-energy work for Thursday-Friday
-5. Keep weekends lighter with optional tasks or rest days
-6. Balance daily workload - aim for 4-6 hours of focused work per weekday
-7. ${breakInstructions}
-8. Each day should start at ${startTime}
-9. ${calendarEvents.length > 0 ? "CRITICAL: Work around existing calendar events. Do NOT schedule tasks during busy times." : ""}
+1. ONLY schedule tasks on these days: ${selectedWorkdays.join(", ")}
+2. For non-workdays (not in the list above), return an empty array []
+3. Distribute tasks evenly across the selected workdays to prevent burnout
+4. Schedule high-priority tasks early in the week if Monday-Wednesday are workdays
+5. Schedule high-energy tasks during morning hours (9am-12pm) on each workday
+6. Lighter tasks and low-energy work for later in the week
+7. Balance daily workload - aim for 4-6 hours of focused work per workday
+8. ${breakInstructions}
+9. Each workday should start at ${startTime}
+10. ${calendarEvents.length > 0 ? "CRITICAL: Work around existing calendar events. Do NOT schedule tasks during busy times." : ""}
 
 IMPORTANT: For breaks, add them as separate items with "isBreak": true. Each day's tasks should be in chronological order with proper start and end times.
 

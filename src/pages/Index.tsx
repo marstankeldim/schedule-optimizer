@@ -35,6 +35,7 @@ const Index = () => {
   const [startTime, setStartTime] = useState("09:00");
   const [breakPreference, setBreakPreference] = useState<"none" | "short" | "long" | "auto">("auto");
   const [planningPeriod, setPlanningPeriod] = useState<"tomorrow" | "week">("tomorrow");
+  const [workdays, setWorkdays] = useState<string[]>(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
   const [scheduleName, setScheduleName] = useState("");
   const [savedSchedules, setSavedSchedules] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -237,6 +238,7 @@ const Index = () => {
           breakPreference,
           userId: session?.user?.id,
           planningPeriod,
+          workdays: planningPeriod === "week" ? workdays : undefined,
         },
       });
 
@@ -674,6 +676,33 @@ const Index = () => {
                     Whole Week
                   </Button>
                 </div>
+
+                {/* Workdays Selector */}
+                {planningPeriod === "week" && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <Label className="text-sm font-medium mb-3 block">Workdays</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                        <Button
+                          key={day}
+                          type="button"
+                          variant={workdays.includes(day) ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setWorkdays(prev => 
+                              prev.includes(day) 
+                                ? prev.filter(d => d !== day)
+                                : [...prev, day]
+                            );
+                          }}
+                          className="text-xs"
+                        >
+                          {day.slice(0, 3)}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </Card>
 
               <TaskInput 
