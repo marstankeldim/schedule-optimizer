@@ -211,27 +211,36 @@ serve(async (req) => {
 
       systemPrompt = `You are an expert weekly schedule optimizer. Given a list of tasks, distribute them intelligently across the selected workdays of the week, starting each day at ${startTime}.
 
-      IMPORTANT: The user has selected these workdays: ${selectedWorkdays.join(", ")}. Do NOT schedule ANY tasks on non-workdays. Non-workdays should have empty arrays.
+IMPORTANT: The user has selected these workdays: ${selectedWorkdays.join(", ")}. Do NOT schedule ANY tasks on non-workdays. Non-workdays should have empty arrays.
 
-      ${calendarEventsInfo}
+${userPreferences ? `
+USER OPTIMIZATION PREFERENCES:
+- Maximum hours per day: ${userPreferences.max_hours_per_day || 8} hours of focused work
+- Preferred deep work days: ${userPreferences.preferred_deep_work_days?.join(", ") || "Monday, Tuesday, Wednesday"}
+- Minimum break time: ${userPreferences.min_break_minutes_per_hour || 10} minutes per hour
+- Evening work allowed: ${userPreferences.allow_evening_work !== false ? "Yes" : "No"}
+${userPreferences.allow_evening_work !== false ? `- Evening cutoff time: ${userPreferences.evening_cutoff_time || "18:00"}` : ""}
+` : ""}
 
-      Weekly optimization rules:
-      1. ONLY schedule tasks on these days: ${selectedWorkdays.join(", ")}
-      2. For non-workdays (not in the list above), return an empty array []
-      3. EVERY task from the input list must appear at least once across the weeklySchedule. Do not drop or skip any tasks, even if days become long.
-      4. Distribute tasks evenly across the selected workdays to prevent burnout
-      5. Schedule high-priority tasks early in the week if Monday-Wednesday are workdays
-      6. Schedule high-energy tasks during morning hours (9am-12pm) on each workday
-      7. Lighter tasks and low-energy work for later in the week
-      8. Balance daily workload - aim for 4-6 hours of focused work per workday
-      9. ${breakInstructions}
-      10. Each workday should start at ${startTime}
-      11. ${calendarEvents.length > 0 ? "CRITICAL: Work around existing calendar events. Do NOT schedule tasks during busy times." : ""}
+${calendarEventsInfo}
 
-      IMPORTANT: For breaks, add them as separate items with "isBreak": true. Each day's tasks should be in chronological order with proper start and end times.
+Weekly optimization rules:
+1. ONLY schedule tasks on these days: ${selectedWorkdays.join(", ")}
+2. For non-workdays (not in the list above), return an empty array []
+3. EVERY task from the input list must appear at least once across the weeklySchedule. Do not drop or skip any tasks, even if days become long.
+4. Respect the max hours per day limit (${userPreferences?.max_hours_per_day || 8} hours) for focused work
+5. Prioritize high-energy, high-priority tasks on preferred deep work days: ${userPreferences?.preferred_deep_work_days?.join(", ") || "Monday, Tuesday, Wednesday"}
+6. Schedule high-energy tasks during morning hours (9am-12pm) on each workday
+7. Ensure at least ${userPreferences?.min_break_minutes_per_hour || 10} minutes of breaks per hour of work
+8. ${userPreferences?.allow_evening_work !== false ? `Do not schedule tasks after ${userPreferences?.evening_cutoff_time || "18:00"}` : "Avoid evening work - schedule tasks during regular work hours only"}
+9. ${breakInstructions}
+10. Each workday should start at ${startTime}
+11. ${calendarEvents.length > 0 ? "CRITICAL: Work around existing calendar events. Do NOT schedule tasks during busy times." : ""}
 
-      Return ONLY a valid JSON object with this exact structure (no additional text):
-      ${responseFormat}`;
+IMPORTANT: For breaks, add them as separate items with "isBreak": true. Each day's tasks should be in chronological order with proper start and end times.
+
+Return ONLY a valid JSON object with this exact structure (no additional text):
+${responseFormat}`;
     } else {
       // Daily planning prompt (tomorrow)
       responseFormat = `{

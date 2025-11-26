@@ -17,6 +17,8 @@ import { CalendarImport } from "@/components/CalendarImport";
 import { FocusMode } from "@/components/FocusMode";
 import { AIInsights } from "@/components/AIInsights";
 import { SchedulePreferences } from "@/components/SchedulePreferences";
+import { WeeklyOptimizationSettings } from "@/components/WeeklyOptimizationSettings";
+import { WorkloadBalanceChart } from "@/components/WorkloadBalanceChart";
 import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch, Focus, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
@@ -909,6 +911,11 @@ const Index = () => {
               <AIInsights userId={session.user.id} />
             )}
             
+            {/* Weekly Optimization Settings */}
+            {session?.user && planningPeriod === "week" && (
+              <WeeklyOptimizationSettings userId={session.user.id} />
+            )}
+            
             {/* Schedule Preferences */}
             {session?.user && (
               <SchedulePreferences userId={session.user.id} />
@@ -990,11 +997,13 @@ const Index = () => {
           
           {/* Show either weekly or daily schedule */}
           {Object.keys(weeklySchedule).length > 0 ? (
-            <WeeklyCalendar
-              weeklySchedule={weeklySchedule}
-              onMarkTaskComplete={(task, day) => {
-                // Update completed task IDs
-                setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+            <>
+              <WorkloadBalanceChart weeklySchedule={weeklySchedule} />
+              <WeeklyCalendar
+                weeklySchedule={weeklySchedule}
+                onMarkTaskComplete={(task, day) => {
+                  // Update completed task IDs
+                  setCompletedTaskIds((prev) => new Set([...prev, task.id]));
 
                 // Handle break completion tracking
                 if (task.isBreak && session?.user) {
@@ -1051,6 +1060,7 @@ const Index = () => {
               }}
               completedTaskIds={completedTaskIds}
             />
+            </>
           ) : (
             <ScheduleTimeline 
               schedule={schedule} 

@@ -438,6 +438,7 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          allow_evening_work: boolean | null
           breakfast_duration: number | null
           breakfast_time: string | null
           created_at: string
@@ -445,14 +446,19 @@ export type Database = {
           dinner_time: string | null
           enable_hydration_reminders: boolean | null
           enable_nutrition_reminders: boolean | null
+          evening_cutoff_time: string | null
           hydration_interval: number | null
           id: string
           lunch_duration: number | null
           lunch_time: string | null
+          max_hours_per_day: number | null
+          min_break_minutes_per_hour: number | null
+          preferred_deep_work_days: string[] | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          allow_evening_work?: boolean | null
           breakfast_duration?: number | null
           breakfast_time?: string | null
           created_at?: string
@@ -460,14 +466,19 @@ export type Database = {
           dinner_time?: string | null
           enable_hydration_reminders?: boolean | null
           enable_nutrition_reminders?: boolean | null
+          evening_cutoff_time?: string | null
           hydration_interval?: number | null
           id?: string
           lunch_duration?: number | null
           lunch_time?: string | null
+          max_hours_per_day?: number | null
+          min_break_minutes_per_hour?: number | null
+          preferred_deep_work_days?: string[] | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          allow_evening_work?: boolean | null
           breakfast_duration?: number | null
           breakfast_time?: string | null
           created_at?: string
@@ -475,10 +486,14 @@ export type Database = {
           dinner_time?: string | null
           enable_hydration_reminders?: boolean | null
           enable_nutrition_reminders?: boolean | null
+          evening_cutoff_time?: string | null
           hydration_interval?: number | null
           id?: string
           lunch_duration?: number | null
           lunch_time?: string | null
+          max_hours_per_day?: number | null
+          min_break_minutes_per_hour?: number | null
+          preferred_deep_work_days?: string[] | null
           updated_at?: string
           user_id?: string
         }
