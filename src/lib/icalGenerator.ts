@@ -4,32 +4,34 @@ export const generateICalFile = (schedule: ScheduledTask[]): string => {
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
   
-  // Helper to format time for iCal (YYYYMMDDTHHMMSS)
+  // Get local timezone
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // Helper to format time for iCal in local time (YYYYMMDDTHHMMSS)
   const formatDateTime = (timeStr: string): string => {
     const [hours, minutes] = timeStr.split(':');
     const date = new Date(today);
     date.setHours(parseInt(hours), parseInt(minutes), 0);
     
-    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    // Format as local time (no Z suffix for local time)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    const sec = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}${month}${day}T${hour}${min}${sec}`;
   };
 
-  // iCal header
+  // iCal header with local timezone
   let ical = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Schedule Optimizer//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:Optimized Schedule
-X-WR-TIMEZONE:UTC
-BEGIN:VTIMEZONE
-TZID:UTC
-BEGIN:STANDARD
-DTSTART:19700101T000000
-TZOFFSETFROM:+0000
-TZOFFSETTO:+0000
-TZNAME:UTC
-END:STANDARD
-END:VTIMEZONE
+X-WR-TIMEZONE:${timezoneName}
 `;
 
   // Add each task as an event
@@ -37,13 +39,15 @@ END:VTIMEZONE
     const startDateTime = formatDateTime(task.startTime);
     const endDateTime = formatDateTime(task.endTime);
     const uid = `${task.id}-${dateStr}@schedule-optimizer.com`;
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
     
     // Create description with task details
     const description = `Duration: ${task.duration} minutes\\nEnergy Level: ${task.energyLevel}\\nPriority: ${task.priority}`;
     
     ical += `BEGIN:VEVENT
 UID:${uid}
-DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
+DTSTAMP:${timestamp}
 DTSTART:${startDateTime}
 DTEND:${endDateTime}
 SUMMARY:${task.title}
