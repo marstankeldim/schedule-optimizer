@@ -21,6 +21,7 @@ interface ScheduleTimelineProps {
   onMarkComplete?: (task: ScheduledTask) => void;
   onReorder?: (newSchedule: ScheduledTask[]) => void;
   userId?: string;
+  completedTaskIds?: Set<string>;
 }
 
 interface SortableTaskItemProps {
@@ -28,6 +29,7 @@ interface SortableTaskItemProps {
   onMarkComplete?: (task: ScheduledTask) => void;
   hasDependencies?: boolean;
   dependenciesCount?: number;
+  isCompleted?: boolean;
 }
 
 const getEnergyColor = (level: Task["energyLevel"]) => {
@@ -52,7 +54,7 @@ const getPriorityLabel = (priority: Task["priority"]) => {
   }
 };
 
-const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesCount }: SortableTaskItemProps) => {
+const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesCount, isCompleted }: SortableTaskItemProps) => {
   const {
     attributes,
     listeners,
@@ -74,9 +76,11 @@ const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesC
       className={`p-4 ${
         task.isBreak 
           ? "bg-muted/50 border-muted-foreground/30" 
-          : task.recurringTaskId
-            ? "bg-gradient-card border-primary/40 ring-1 ring-primary/20 hover:shadow-glow"
-            : "bg-gradient-card border-border hover:shadow-glow"
+          : isCompleted
+            ? "bg-primary/20 border-primary ring-2 ring-primary/30"
+            : task.recurringTaskId
+              ? "bg-gradient-card border-primary/40 ring-1 ring-primary/20 hover:shadow-glow"
+              : "bg-gradient-card border-border hover:shadow-glow"
       } shadow-card transition-all duration-300 group ${
         isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
       }`}
@@ -137,9 +141,9 @@ const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesC
             size="sm"
             variant="ghost"
             onClick={() => onMarkComplete(task)}
-            className="hover:bg-primary/10 hover:text-primary"
+            className={isCompleted ? "text-primary" : "hover:bg-primary/10 hover:text-primary"}
           >
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className={`w-4 h-4 ${isCompleted ? "fill-primary" : ""}`} />
           </Button>
         )}
       </div>
@@ -147,7 +151,7 @@ const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesC
   );
 };
 
-export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder, userId }: ScheduleTimelineProps) => {
+export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder, userId, completedTaskIds = new Set() }: ScheduleTimelineProps) => {
   const { toast } = useToast();
   const { getTaskDependencies } = useTaskDependencies(userId);
   
@@ -263,6 +267,7 @@ export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder, userId }
           <div className="space-y-4">
             {schedule.map((task) => {
               const dependencies = task.isBreak ? [] : getTaskDependencies(task.id);
+              const isCompleted = completedTaskIds.has(task.id);
               return (
                 <SortableTaskItem
                   key={task.id}
@@ -270,6 +275,7 @@ export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder, userId }
                   onMarkComplete={onMarkComplete}
                   hasDependencies={dependencies.length > 0}
                   dependenciesCount={dependencies.length}
+                  isCompleted={isCompleted}
                 />
               );
             })}

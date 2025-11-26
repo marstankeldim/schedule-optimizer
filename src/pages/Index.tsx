@@ -327,7 +327,12 @@ const Index = () => {
   const handleUndoRemoval = () => {
     if (pendingRemoval) {
       clearTimeout(pendingRemoval.timeoutId);
-      setSchedule((prev) => [...prev, pendingRemoval.task]);
+      // Remove from completed tasks set
+      setCompletedTaskIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(pendingRemoval.task.id);
+        return newSet;
+      });
       setPendingRemoval(null);
       toast({
         title: "Task restored",
@@ -347,58 +352,24 @@ const Index = () => {
     // Add to completed tasks set
     setCompletedTaskIds((prev) => new Set([...prev, task.id]));
 
-    // Remove task from visible schedule immediately
-    setSchedule((prev) => {
-      const updatedSchedule = prev.filter((t) => t.id !== task.id);
-      
-      // Get the current set of completed task IDs (including the one just completed)
-      const currentCompletedIds = new Set([...completedTaskIds, task.id]);
-      
-      // Remove breaks only when BOTH adjacent tasks are completed
-      const finalSchedule = updatedSchedule.filter((item, index) => {
-        if (!item.isBreak) return true;
-        
-        // Find the break's position in the original schedule
-        const originalIndex = schedule.findIndex((t) => t.id === item.id);
-        if (originalIndex === -1) return true;
-        
-        // Get the original adjacent tasks
-        const originalPrevTask = schedule[originalIndex - 1];
-        const originalNextTask = schedule[originalIndex + 1];
-        
-        // Check if both original adjacent tasks are completed
-        const prevTaskCompleted = !originalPrevTask || originalPrevTask.isBreak || currentCompletedIds.has(originalPrevTask.id);
-        const nextTaskCompleted = !originalNextTask || originalNextTask.isBreak || currentCompletedIds.has(originalNextTask.id);
-        
-        // Keep break unless BOTH adjacent tasks are completed
-        return !(prevTaskCompleted && nextTaskCompleted);
-      });
+    // Update daily completion tracking and check achievements
+    const nonBreakTasks = schedule.filter(t => !t.isBreak);
+    const completedCount = completedTaskIds.size + 1; // +1 for current task
+    updateDailyCompletion(completedCount, nonBreakTasks.length);
 
-      // Update daily completion tracking
-      const nonBreakTasks = schedule.filter(t => !t.isBreak);
-      const completedTasks = nonBreakTasks.length - finalSchedule.filter(t => !t.isBreak).length;
-      updateDailyCompletion(completedTasks, nonBreakTasks.length);
-
-      // Check achievements
-      if (session?.user?.id) {
-        checkTaskCompletionAchievements(new Date());
-        
-        // Check if all tasks are done (Speed Demon)
-        if (finalSchedule.filter(t => !t.isBreak).length === 0 && nonBreakTasks.length > 0) {
-          const lastTask = schedule[schedule.length - 1];
-          if (lastTask && !lastTask.isBreak) {
-            checkSpeedDemon(lastTask.endTime, new Date());
-          }
+    // Check achievements
+    if (session?.user?.id) {
+      checkTaskCompletionAchievements(new Date());
+      
+      // Check if all tasks are done (Speed Demon)
+      if (completedCount === nonBreakTasks.length) {
+        const lastTask = schedule[schedule.length - 1];
+        if (lastTask && !lastTask.isBreak) {
+          checkSpeedDemon(lastTask.endTime, new Date());
         }
-        
-        // Check streak achievements
-        if (completedTasks === nonBreakTasks.length) {
-          checkStreakAchievements(currentStreak + 1);
-        }
+        checkStreakAchievements(currentStreak + 1);
       }
-
-      return finalSchedule;
-    });
+    }
 
     // Set up 5-second undo window
     const timeoutId = setTimeout(async () => {
@@ -943,14 +914,8 @@ const Index = () => {
             <WeeklyCalendar
               weeklySchedule={weeklySchedule}
               onMarkTaskComplete={(task, day) => {
-                // Update weekly schedule with completed task
+                // Update completed task IDs
                 setCompletedTaskIds((prev) => new Set([...prev, task.id]));
-                
-                // Remove task from the specific day
-                setWeeklySchedule((prev) => {
-                  const updatedDay = prev[day].filter((t) => t.id !== task.id);
-                  return { ...prev, [day]: updatedDay };
-                });
 
                 // Handle completion tracking
                 if (!task.isBreak && session?.user) {
@@ -963,6 +928,10 @@ const Index = () => {
                   }).then(({ error }) => {
                     if (error) {
                       console.error("Error saving completed task:", error);
+                    } else {
+                      // Check and update goals
+                      checkAndUpdateGoals();
+                      checkTaskCompletionAchievements(new Date());
                     }
                   });
                 }
@@ -980,6 +949,7 @@ const Index = () => {
               onMarkComplete={handleMarkTaskComplete}
               onReorder={setSchedule}
               userId={session?.user?.id}
+              completedTaskIds={completedTaskIds}
             />
           )}
         </div>
