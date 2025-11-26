@@ -133,7 +133,7 @@ export const AIInsights = ({ userId }: AIInsightsProps) => {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="predictions">
             <Clock className="w-4 h-4 mr-2" />
-            Flow Predictions
+            Flow
           </TabsTrigger>
           <TabsTrigger value="insights">
             <TrendingUp className="w-4 h-4 mr-2" />
