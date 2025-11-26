@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Zap } from "lucide-react";
+import { Clock, Zap, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 
 interface CompletedTask {
@@ -22,6 +23,7 @@ interface TaskHistoryProps {
 export function TaskHistory({ userId }: TaskHistoryProps) {
   const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(3);
 
   useEffect(() => {
     loadCompletedTasks();
@@ -43,6 +45,13 @@ export function TaskHistory({ userId }: TaskHistoryProps) {
     }
     setIsLoading(false);
   };
+
+  const handleShowMore = () => {
+    setVisibleCount((prev) => prev + 5);
+  };
+
+  const visibleTasks = completedTasks.slice(0, visibleCount);
+  const hasMore = visibleCount < completedTasks.length;
 
   const getEnergyColor = (level: string) => {
     switch (level) {
@@ -84,9 +93,9 @@ export function TaskHistory({ userId }: TaskHistoryProps) {
       {completedTasks.length === 0 ? (
         <p className="text-muted-foreground">No completed tasks yet. Start completing tasks to build your history!</p>
       ) : (
-        <ScrollArea className="h-[400px] pr-4">
+        <div className="space-y-4">
           <div className="space-y-3">
-            {completedTasks.map((task) => (
+            {visibleTasks.map((task) => (
               <div
                 key={task.id}
                 className="p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors"
@@ -111,7 +120,18 @@ export function TaskHistory({ userId }: TaskHistoryProps) {
               </div>
             ))}
           </div>
-        </ScrollArea>
+
+          {hasMore && (
+            <Button
+              onClick={handleShowMore}
+              variant="outline"
+              className="w-full border-border hover:bg-muted"
+            >
+              <ChevronDown className="w-4 h-4 mr-2" />
+              Show More ({completedTasks.length - visibleCount} remaining)
+            </Button>
+          )}
+        </div>
       )}
     </Card>
   );
