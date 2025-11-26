@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Plus, Repeat } from "lucide-react";
+import { RecurringTaskDialog } from "./RecurringTaskDialog";
 
 export interface Task {
   id: string;
@@ -16,93 +17,148 @@ export interface Task {
 
 interface TaskInputProps {
   onAddTask: (task: Omit<Task, "id">) => void;
+  userId?: string;
+  onRecurringCreated?: () => void;
 }
 
-export const TaskInput = ({ onAddTask }: TaskInputProps) => {
+export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputProps) => {
   const [title, setTitle] = useState("");
   const [duration, setDuration] = useState("30");
   const [energyLevel, setEnergyLevel] = useState<Task["energyLevel"]>("medium");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
+  const [showRecurringDialog, setShowRecurringDialog] = useState(false);
+  const [pendingTask, setPendingTask] = useState<Omit<Task, "id"> | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    onAddTask({
+    const newTask = {
       title: title.trim(),
       duration: parseInt(duration),
       energyLevel,
       priority,
-    });
+    };
 
+    onAddTask(newTask);
     setTitle("");
     setDuration("30");
     setEnergyLevel("medium");
     setPriority("medium");
   };
 
-  return (
-    <Card className="p-6 bg-gradient-card border-border shadow-card">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="title" className="text-foreground">Task Name</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter task name..."
-            className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
-          />
-        </div>
+  const handleMakeRecurring = () => {
+    if (!title.trim() || !userId) return;
 
-        <div className="grid grid-cols-3 gap-4">
+    const newTask = {
+      title: title.trim(),
+      duration: parseInt(duration),
+      energyLevel,
+      priority,
+    };
+
+    setPendingTask(newTask);
+    setShowRecurringDialog(true);
+  };
+
+  const handleRecurringSuccess = () => {
+    setTitle("");
+    setDuration("30");
+    setEnergyLevel("medium");
+    setPriority("medium");
+    setPendingTask(null);
+    if (onRecurringCreated) {
+      onRecurringCreated();
+    }
+  };
+
+  return (
+    <>
+      <Card className="p-6 bg-gradient-card border-border shadow-card">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="duration" className="text-foreground">Duration (min)</Label>
+            <Label htmlFor="title" className="text-foreground">Task Name</Label>
             <Input
-              id="duration"
-              type="number"
-              min="5"
-              step="5"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter task name..."
               className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
             />
           </div>
 
-          <div>
-            <Label htmlFor="energy" className="text-foreground">Energy Level</Label>
-            <Select value={energyLevel} onValueChange={(v) => setEnergyLevel(v as Task["energyLevel"])}>
-              <SelectTrigger id="energy" className="mt-1.5 bg-secondary border-border focus:border-primary">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="duration" className="text-foreground">Duration (min)</Label>
+              <Input
+                id="duration"
+                type="number"
+                min="5"
+                step="5"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="energy" className="text-foreground">Energy Level</Label>
+              <Select value={energyLevel} onValueChange={(v) => setEnergyLevel(v as Task["energyLevel"])}>
+                <SelectTrigger id="energy" className="mt-1.5 bg-secondary border-border focus:border-primary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="priority" className="text-foreground">Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as Task["priority"])}>
+                <SelectTrigger id="priority" className="mt-1.5 bg-secondary border-border focus:border-primary">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div>
-            <Label htmlFor="priority" className="text-foreground">Priority</Label>
-            <Select value={priority} onValueChange={(v) => setPriority(v as Task["priority"])}>
-              <SelectTrigger id="priority" className="mt-1.5 bg-secondary border-border focus:border-primary">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow transition-all">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Task
+            </Button>
+            {userId && (
+              <Button
+                type="button"
+                onClick={handleMakeRecurring}
+                variant="outline"
+                className="bg-secondary border-border hover:bg-secondary/80"
+              >
+                <Repeat className="w-4 h-4 mr-2" />
+                Make Recurring
+              </Button>
+            )}
           </div>
-        </div>
+        </form>
+      </Card>
 
-        <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow transition-all">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Task
-        </Button>
-      </form>
-    </Card>
+      {pendingTask && userId && (
+        <RecurringTaskDialog
+          open={showRecurringDialog}
+          onOpenChange={setShowRecurringDialog}
+          task={pendingTask}
+          userId={userId}
+          onSuccess={handleRecurringSuccess}
+        />
+      )}
+    </>
   );
 };
