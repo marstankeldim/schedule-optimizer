@@ -107,6 +107,42 @@ export type Database = {
         }
         Relationships: []
       }
+      flow_state_sessions: {
+        Row: {
+          average_energy_level: string | null
+          created_at: string
+          end_time: string | null
+          id: string
+          interruptions: number
+          quality_score: number | null
+          start_time: string
+          tasks_completed: number
+          user_id: string
+        }
+        Insert: {
+          average_energy_level?: string | null
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          interruptions?: number
+          quality_score?: number | null
+          start_time: string
+          tasks_completed?: number
+          user_id: string
+        }
+        Update: {
+          average_energy_level?: string | null
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          interruptions?: number
+          quality_score?: number | null
+          start_time?: string
+          tasks_completed?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       goal_achievements: {
         Row: {
           achieved_at: string
