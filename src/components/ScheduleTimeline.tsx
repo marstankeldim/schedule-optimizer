@@ -1,10 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Zap, Download, Calendar, Coffee, CheckCircle2, GripVertical } from "lucide-react";
+import { Clock, Zap, Download, Calendar, Coffee, CheckCircle2, GripVertical, GitBranch } from "lucide-react";
 import type { Task } from "./TaskInput";
 import { downloadICalFile } from "@/lib/icalGenerator";
 import { useToast } from "@/hooks/use-toast";
+import { useTaskDependencies } from "@/hooks/useTaskDependencies";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -19,11 +20,14 @@ interface ScheduleTimelineProps {
   schedule: ScheduledTask[];
   onMarkComplete?: (task: ScheduledTask) => void;
   onReorder?: (newSchedule: ScheduledTask[]) => void;
+  userId?: string;
 }
 
 interface SortableTaskItemProps {
   task: ScheduledTask;
   onMarkComplete?: (task: ScheduledTask) => void;
+  hasDependencies?: boolean;
+  dependenciesCount?: number;
 }
 
 const getEnergyColor = (level: Task["energyLevel"]) => {
@@ -48,7 +52,7 @@ const getPriorityLabel = (priority: Task["priority"]) => {
   }
 };
 
-const SortableTaskItem = ({ task, onMarkComplete }: SortableTaskItemProps) => {
+const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesCount }: SortableTaskItemProps) => {
   const {
     attributes,
     listeners,
@@ -102,6 +106,12 @@ const SortableTaskItem = ({ task, onMarkComplete }: SortableTaskItemProps) => {
                 <Badge variant="outline" className="border-border text-foreground">
                   {getPriorityLabel(task.priority)}
                 </Badge>
+                {hasDependencies && (
+                  <Badge variant="outline" className="bg-accent/20 text-accent border-accent/30">
+                    <GitBranch className="w-3 h-3 mr-1" />
+                    {dependenciesCount} {dependenciesCount === 1 ? 'dependency' : 'dependencies'}
+                  </Badge>
+                )}
               </>
             )}
           </div>
@@ -129,8 +139,9 @@ const SortableTaskItem = ({ task, onMarkComplete }: SortableTaskItemProps) => {
   );
 };
 
-export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder }: ScheduleTimelineProps) => {
+export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder, userId }: ScheduleTimelineProps) => {
   const { toast } = useToast();
+  const { getTaskDependencies } = useTaskDependencies(userId);
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -242,13 +253,18 @@ export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder }: Schedu
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-4">
-            {schedule.map((task) => (
-              <SortableTaskItem
-                key={task.id}
-                task={task}
-                onMarkComplete={onMarkComplete}
-              />
-            ))}
+            {schedule.map((task) => {
+              const dependencies = task.isBreak ? [] : getTaskDependencies(task.id);
+              return (
+                <SortableTaskItem
+                  key={task.id}
+                  task={task}
+                  onMarkComplete={onMarkComplete}
+                  hasDependencies={dependencies.length > 0}
+                  dependenciesCount={dependencies.length}
+                />
+              );
+            })}
           </div>
         </SortableContext>
       </DndContext>

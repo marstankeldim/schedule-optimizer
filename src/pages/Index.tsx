@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TaskInput, Task } from "@/components/TaskInput";
 import { TaskTemplates } from "@/components/TaskTemplates";
 import { RecurringTasks } from "@/components/RecurringTasks";
+import { TaskDependencies } from "@/components/TaskDependencies";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
-import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3 } from "lucide-react";
+import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,8 @@ const Index = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<{ task: ScheduledTask; timeoutId: NodeJS.Timeout } | null>(null);
   const [recurringTasksKey, setRecurringTasksKey] = useState(0);
+  const [dependencyDialogOpen, setDependencyDialogOpen] = useState(false);
+  const [selectedTaskForDependency, setSelectedTaskForDependency] = useState<Task | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
@@ -484,12 +487,25 @@ const Index = () => {
                   {tasks.map((task) => (
                     <div
                       key={task.id}
-                      className="p-3 bg-secondary rounded-lg border border-border"
+                      className="p-3 bg-secondary rounded-lg border border-border flex items-center justify-between"
                     >
-                      <p className="font-medium text-foreground">{task.title}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {task.duration}min • {task.energyLevel} energy • {task.priority} priority
-                      </p>
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{task.title}</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {task.duration}min • {task.energyLevel} energy • {task.priority} priority
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedTaskForDependency(task);
+                          setDependencyDialogOpen(true);
+                        }}
+                        className="hover:bg-primary/10 hover:text-primary"
+                      >
+                        <GitBranch className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -601,16 +617,29 @@ const Index = () => {
               schedule={schedule} 
               onMarkComplete={handleMarkTaskComplete}
               onReorder={setSchedule}
+              userId={session?.user?.id}
             />
         </div>
       )}
 
-      {/* Task History Section */}
-      {session && schedule.length === 0 && (
-        <div className="mt-8">
-          <TaskHistory userId={session.user.id} />
-        </div>
-      )}
+        {/* Task History Section */}
+        {session && schedule.length === 0 && (
+          <div className="mt-8">
+            <TaskHistory userId={session.user.id} />
+          </div>
+        )}
+
+        {/* Task Dependencies Dialog */}
+        {selectedTaskForDependency && session?.user && (
+          <TaskDependencies
+            open={dependencyDialogOpen}
+            onOpenChange={setDependencyDialogOpen}
+            task={selectedTaskForDependency}
+            allTasks={tasks}
+            userId={session.user.id}
+            onSuccess={loadTasks}
+          />
+        )}
       </div>
     </div>
   );
