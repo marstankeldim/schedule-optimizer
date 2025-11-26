@@ -193,6 +193,7 @@ export const RecurringTasks = ({ userId, onTasksGenerated }: RecurringTasksProps
         daysOfWeek?: number[];
         dayOfMonth?: number;
         interval?: number;
+        unit?: string;
       };
 
       let shouldGenerate = false;
@@ -209,6 +210,25 @@ export const RecurringTasks = ({ userId, onTasksGenerated }: RecurringTasksProps
         case "monthly":
           if (pattern.dayOfMonth === today.getDate()) {
             shouldGenerate = true;
+          }
+          break;
+        case "custom":
+          // Custom interval logic
+          const startDate = new Date(recurringTask.start_date);
+          const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (pattern.unit === "days") {
+            shouldGenerate = daysDiff % (pattern.interval || 1) === 0;
+          } else if (pattern.unit === "weeks") {
+            const weeksDiff = Math.floor(daysDiff / 7);
+            if (weeksDiff % (pattern.interval || 1) === 0 && pattern.daysOfWeek?.includes(dayOfWeek)) {
+              shouldGenerate = true;
+            }
+          } else if (pattern.unit === "months") {
+            const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth());
+            if (monthsDiff % (pattern.interval || 1) === 0 && pattern.dayOfMonth === today.getDate()) {
+              shouldGenerate = true;
+            }
           }
           break;
       }
@@ -270,6 +290,7 @@ export const RecurringTasks = ({ userId, onTasksGenerated }: RecurringTasksProps
       daysOfWeek?: number[];
       dayOfMonth?: number;
       interval?: number;
+      unit?: string;
     };
 
     switch (task.recurrence_type) {
@@ -285,6 +306,17 @@ export const RecurringTasks = ({ userId, onTasksGenerated }: RecurringTasksProps
         return "Weekly";
       case "monthly":
         return `Day ${pattern.dayOfMonth} of every month`;
+      case "custom":
+        const interval = pattern.interval || 1;
+        const unit = pattern.unit || "weeks";
+        let desc = `Every ${interval} ${unit}`;
+        if (unit === "weeks" && pattern.daysOfWeek) {
+          const days = pattern.daysOfWeek.map((d) => DAYS_OF_WEEK[d]).join(", ");
+          desc += ` on ${days}`;
+        } else if (unit === "months" && pattern.dayOfMonth) {
+          desc += ` on day ${pattern.dayOfMonth}`;
+        }
+        return desc;
       default:
         return task.recurrence_type;
     }
