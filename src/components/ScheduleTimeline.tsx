@@ -1,7 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Zap, Download, Calendar } from "lucide-react";
 import type { Task } from "./TaskInput";
+import { downloadICalFile } from "@/lib/icalGenerator";
+import { useToast } from "@/hooks/use-toast";
 
 export interface ScheduledTask extends Task {
   startTime: string;
@@ -35,6 +38,16 @@ const getPriorityLabel = (priority: Task["priority"]) => {
 };
 
 export const ScheduleTimeline = ({ schedule }: ScheduleTimelineProps) => {
+  const { toast } = useToast();
+
+  const handleExportCalendar = () => {
+    downloadICalFile(schedule);
+    toast({
+      title: "Calendar exported",
+      description: "Your schedule has been downloaded as an .ics file. Import it into Google Calendar, Outlook, or any calendar app.",
+    });
+  };
+
   if (schedule.length === 0) {
     return (
       <Card className="p-12 bg-gradient-card border-border shadow-card text-center">
@@ -48,7 +61,25 @@ export const ScheduleTimeline = ({ schedule }: ScheduleTimelineProps) => {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <Card className="p-4 bg-gradient-card border-border shadow-card">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-foreground">
+            <Calendar className="w-5 h-5 text-primary" />
+            <span className="font-semibold">Your Schedule ({schedule.length} tasks)</span>
+          </div>
+          <Button
+            onClick={handleExportCalendar}
+            variant="outline"
+            size="sm"
+            className="bg-secondary hover:bg-secondary/80 border-primary/30 text-foreground"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export to Calendar
+          </Button>
+        </div>
+      </Card>
+
       {schedule.map((task) => (
         <Card
           key={task.id}
