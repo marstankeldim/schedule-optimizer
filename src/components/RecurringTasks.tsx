@@ -29,12 +29,12 @@ interface RecurringTask {
 
 interface RecurringTasksProps {
   userId: string;
-  onGenerateTasks: (tasks: Omit<Task, "id">[]) => void;
+  onTasksGenerated: () => void;
 }
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps) => {
+export const RecurringTasks = ({ userId, onTasksGenerated }: RecurringTasksProps) => {
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
@@ -249,27 +249,13 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
           variant: "destructive",
         });
       } else {
-        const addedTasks: Task[] = data.map((d) => ({
-          id: d.id,
-          title: d.title,
-          duration: d.duration,
-          energyLevel: d.energy_level as "high" | "medium" | "low",
-          priority: d.priority as "high" | "medium" | "low",
-          recurringTaskId: d.recurring_task_id,
-        }));
-        
-        onGenerateTasks(addedTasks.map(t => ({
-          title: t.title,
-          duration: t.duration,
-          energyLevel: t.energyLevel,
-          priority: t.priority,
-          recurringTaskId: t.recurringTaskId,
-        })));
-
         toast({
           title: "Recurring tasks added",
-          description: `${addedTasks.length} recurring task(s) added to your task list`,
+          description: `${data.length} recurring task(s) added to your task list`,
         });
+        
+        // Notify parent to reload tasks
+        onTasksGenerated();
       }
     } else {
       toast({
@@ -337,7 +323,7 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
               className="bg-primary hover:bg-primary/90 shadow-glow font-semibold"
             >
               <Calendar className="w-4 h-4 mr-2" />
-              Add Today's Tasks
+              Add to Today's Tasks
             </Button>
           )}
           <Dialog open={isOpen} onOpenChange={setIsOpen}>

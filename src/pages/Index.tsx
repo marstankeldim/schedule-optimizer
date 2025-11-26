@@ -643,7 +643,7 @@ const Index = () => {
               <RecurringTasks 
                 key={recurringTasksKey}
                 userId={session.user.id}
-                onGenerateTasks={handleAddMultipleTasks}
+                onTasksGenerated={loadTasks}
               />
             )}
 
