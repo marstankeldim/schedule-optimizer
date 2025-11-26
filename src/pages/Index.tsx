@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskInput, Task } from "@/components/TaskInput";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
+import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useGoalTracking } from "@/hooks/useGoalTracking";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
@@ -24,6 +26,7 @@ const Index = () => {
   const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
 
   useEffect(() => {
     // Set up auth state listener
@@ -191,6 +194,10 @@ const Index = () => {
       });
       setScheduleName("");
       loadSavedSchedules();
+      // Check and update goals after saving schedule
+      setTimeout(() => {
+        checkAndUpdateGoals();
+      }, 100);
     }
   };
 
@@ -227,6 +234,10 @@ const Index = () => {
         title: "Task completed!",
         description: `"${task.title}" has been marked as complete`,
       });
+      // Check and update goals after task completion
+      setTimeout(() => {
+        checkAndUpdateGoals();
+      }, 100);
     }
   };
 
@@ -343,9 +354,9 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Input */}
-          <div className="space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
               <TaskInput onAddTask={handleAddTask} />
@@ -443,8 +454,8 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Column - Schedule */}
-          <div>
+          {/* Right Column - Schedule & Goals */}
+          <div className="space-y-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold text-foreground">Your Optimized Schedule</h2>
               {schedule.length > 0 && (
@@ -467,6 +478,11 @@ const Index = () => {
               )}
             </div>
             <ScheduleTimeline schedule={schedule} onMarkComplete={handleMarkTaskComplete} />
+            
+            {/* Goals Sidebar */}
+            {session?.user && (
+              <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
+            )}
           </div>
         </div>
       </div>
