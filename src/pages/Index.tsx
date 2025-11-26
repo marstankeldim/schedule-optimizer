@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { TaskInput, Task } from "@/components/TaskInput";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
-import { Sparkles, Trash2, Calendar } from "lucide-react";
+import { Sparkles, Trash2, Calendar, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,6 +13,7 @@ const Index = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [schedule, setSchedule] = useState<ScheduledTask[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
+  const [startTime, setStartTime] = useState("09:00");
   const { toast } = useToast();
 
   const handleAddTask = (newTask: Omit<Task, "id">) => {
@@ -38,7 +41,7 @@ const Index = () => {
     setIsOptimizing(true);
     try {
       const { data, error } = await supabase.functions.invoke("optimize-schedule", {
-        body: { tasks },
+        body: { tasks, startTime },
       });
 
       if (error) throw error;
@@ -123,6 +126,26 @@ const Index = () => {
                     </div>
                   ))}
                 </div>
+              </Card>
+            )}
+
+            {/* Start Time Selection */}
+            {tasks.length > 0 && (
+              <Card className="p-6 bg-gradient-card border-border shadow-card">
+                <Label htmlFor="startTime" className="text-foreground flex items-center gap-2 mb-3">
+                  <Clock className="w-4 h-4 text-primary" />
+                  What time does your day start?
+                </Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="bg-secondary border-border focus:border-primary transition-colors"
+                />
+                <p className="text-sm text-muted-foreground mt-2">
+                  Your schedule will be optimized starting from this time
+                </p>
               </Card>
             )}
 
