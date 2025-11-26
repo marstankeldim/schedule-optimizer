@@ -13,7 +13,8 @@ import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
 import { CalendarImport } from "@/components/CalendarImport";
-import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch } from "lucide-react";
+import { FocusMode } from "@/components/FocusMode";
+import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch, Focus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
 import { useStreakTracking } from "@/hooks/useStreakTracking";
@@ -38,6 +39,7 @@ const Index = () => {
   const [recurringTasksKey, setRecurringTasksKey] = useState(0);
   const [dependencyDialogOpen, setDependencyDialogOpen] = useState(false);
   const [selectedTaskForDependency, setSelectedTaskForDependency] = useState<Task | null>(null);
+  const [isFocusMode, setIsFocusMode] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
@@ -71,6 +73,31 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // ESC key to exit focus mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFocusMode) {
+        setIsFocusMode(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFocusMode]);
+
+  const getCurrentTask = (): ScheduledTask | null => {
+    if (schedule.length === 0) return null;
+
+    const now = new Date();
+    const currentTask = schedule.find((task) => {
+      const start = new Date(task.startTime);
+      const end = new Date(task.endTime);
+      return now >= start && now <= end;
+    });
+
+    return currentTask || null;
+  };
 
   const loadTasks = async () => {
     if (!session?.user) return;
@@ -783,6 +810,14 @@ const Index = () => {
             <h2 className="text-2xl font-semibold text-foreground">Your Optimized Schedule</h2>
             <div className="flex gap-2">
               <Button
+                onClick={() => setIsFocusMode(true)}
+                variant="outline"
+                className="bg-primary/10 hover:bg-primary/20 border-primary/30"
+              >
+                <Focus className="w-4 h-4 mr-2" />
+                Focus Mode
+              </Button>
+              <Button
                 onClick={handleRescheduleToTomorrow}
                 variant="outline"
                 className="bg-secondary hover:bg-secondary/80 border-border"
@@ -838,6 +873,18 @@ const Index = () => {
             allTasks={tasks}
             userId={session.user.id}
             onSuccess={loadTasks}
+          />
+        )}
+
+        {/* Focus Mode */}
+        {isFocusMode && (
+          <FocusMode
+            currentTask={getCurrentTask()}
+            onExit={() => setIsFocusMode(false)}
+            onComplete={(taskId) => {
+              const task = schedule.find((t) => t.id === taskId);
+              if (task) handleMarkTaskComplete(task);
+            }}
           />
         )}
       </div>
