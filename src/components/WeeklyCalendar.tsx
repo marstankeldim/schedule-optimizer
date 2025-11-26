@@ -136,6 +136,16 @@ export const WeeklyCalendar = ({
                               <CheckCircle2 className={`w-3 h-3 ${isCompleted ? "fill-primary" : ""}`} />
                             </Button>
                           )}
+                          {task.isBreak && onMarkTaskComplete && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className={`h-5 w-5 p-0 shrink-0 ${isCompleted ? "text-primary" : ""}`}
+                              onClick={() => onMarkTaskComplete(task, day)}
+                            >
+                              <CheckCircle2 className={`w-3 h-3 ${isCompleted ? "fill-primary" : ""}`} />
+                            </Button>
+                          )}
                         </div>
 
                         {!task.isBreak && (

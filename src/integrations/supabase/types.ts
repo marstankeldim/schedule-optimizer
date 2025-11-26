@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      break_adherence: {
+        Row: {
+          break_title: string
+          break_type: string
+          created_at: string
+          date: string
+          duration_minutes: number
+          id: string
+          scheduled_time: string
+          taken: boolean | null
+          taken_at: string | null
+          user_id: string
+        }
+        Insert: {
+          break_title: string
+          break_type: string
+          created_at?: string
+          date: string
+          duration_minutes: number
+          id?: string
+          scheduled_time: string
+          taken?: boolean | null
+          taken_at?: string | null
+          user_id: string
+        }
+        Update: {
+          break_title?: string
+          break_type?: string
+          created_at?: string
+          date?: string
+          duration_minutes?: number
+          id?: string
+          scheduled_time?: string
+          taken?: boolean | null
+          taken_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null

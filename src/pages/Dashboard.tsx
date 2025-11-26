@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
+import { BreakAdherenceAnalytics } from "@/components/BreakAdherenceAnalytics";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, TrendingUp, Clock, Zap, Coffee, Calendar, Trophy } from "lucide-react";
@@ -420,6 +421,13 @@ const Dashboard = () => {
             </Card>
           )}
         </div>
+
+        {/* Break Adherence Analytics */}
+        {session?.user && (
+          <div className="mb-8">
+            <BreakAdherenceAnalytics userId={session.user.id} />
+          </div>
+        )}
 
         {completedTasks.length === 0 && (
           <Card className="p-12 bg-gradient-card border-border shadow-card text-center">

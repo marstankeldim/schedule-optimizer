@@ -171,6 +171,16 @@ const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesC
             <CheckCircle2 className={`w-4 h-4 ${isCompleted ? "fill-primary" : ""}`} />
           </Button>
         )}
+        {task.isBreak && onMarkComplete && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onMarkComplete(task)}
+            className={isCompleted ? "text-primary" : "hover:bg-primary/10 hover:text-primary"}
+          >
+            <CheckCircle2 className={`w-4 h-4 ${isCompleted ? "fill-primary" : ""}`} />
+          </Button>
+        )}
       </div>
     </Card>
   );
