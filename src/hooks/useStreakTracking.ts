@@ -187,7 +187,11 @@ export const useStreakTracking = (userId?: string) => {
   };
 
   useEffect(() => {
-    loadStreaks();
+    if (userId) {
+      loadStreaks();
+    } else {
+      setLoading(false);
+    }
   }, [userId]);
 
   return {

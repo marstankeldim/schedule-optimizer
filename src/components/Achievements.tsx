@@ -4,7 +4,8 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ACHIEVEMENTS, useAchievements } from "@/hooks/useAchievements";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface AchievementsProps {
   userId: string;
@@ -12,6 +13,7 @@ interface AchievementsProps {
 }
 
 export const Achievements = ({ userId, currentStreak }: AchievementsProps) => {
+  const [activeTab, setActiveTab] = useState<"unlocked" | "progress" | "locked">("unlocked");
   const {
     loading,
     getUnlockedAchievements,
@@ -45,21 +47,38 @@ export const Achievements = ({ userId, currentStreak }: AchievementsProps) => {
         </Badge>
       </div>
 
-      <Tabs defaultValue="unlocked" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="unlocked">
-            Unlocked ({unlocked.length})
-          </TabsTrigger>
-          <TabsTrigger value="progress">
-            In Progress ({inProgress.length})
-          </TabsTrigger>
-          <TabsTrigger value="locked">
-            Locked ({locked.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* Custom Tab Buttons */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          variant={activeTab === "unlocked" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("unlocked")}
+          className="flex-1"
+        >
+          Unlocked ({unlocked.length})
+        </Button>
+        <Button
+          variant={activeTab === "progress" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("progress")}
+          className="flex-1"
+        >
+          In Progress ({inProgress.length})
+        </Button>
+        <Button
+          variant={activeTab === "locked" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("locked")}
+          className="flex-1"
+        >
+          Locked ({locked.length})
+        </Button>
+      </div>
 
-        <TabsContent value="unlocked" className="space-y-3 mt-4">
-          {unlocked.length === 0 ? (
+      {/* Tab Content */}
+      <div className="space-y-3">
+        {activeTab === "unlocked" && (
+          unlocked.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No achievements unlocked yet</p>
@@ -91,11 +110,11 @@ export const Achievements = ({ userId, currentStreak }: AchievementsProps) => {
                 </div>
               </div>
             ))
-          )}
-        </TabsContent>
+          )
+        )}
 
-        <TabsContent value="progress" className="space-y-3 mt-4">
-          {inProgress.length === 0 ? (
+        {activeTab === "progress" && (
+          inProgress.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Trophy className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No achievements in progress</p>
@@ -136,11 +155,11 @@ export const Achievements = ({ userId, currentStreak }: AchievementsProps) => {
                 </div>
               );
             })
-          )}
-        </TabsContent>
+          )
+        )}
 
-        <TabsContent value="locked" className="space-y-3 mt-4">
-          {locked.map((achievement) => (
+        {activeTab === "locked" && (
+          locked.map((achievement) => (
             <div
               key={achievement.id}
               className="p-4 bg-secondary/50 rounded-lg border border-border/50 opacity-60"
@@ -162,9 +181,9 @@ export const Achievements = ({ userId, currentStreak }: AchievementsProps) => {
                 </div>
               </div>
             </div>
-          ))}
-        </TabsContent>
-      </Tabs>
+          ))
+        )}
+      </div>
     </Card>
   );
 };

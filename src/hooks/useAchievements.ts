@@ -257,7 +257,11 @@ export const useAchievements = (userId?: string) => {
   };
 
   useEffect(() => {
-    loadAchievements();
+    if (userId) {
+      loadAchievements();
+    } else {
+      setLoading(false);
+    }
   }, [userId]);
 
   return {
