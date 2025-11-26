@@ -88,21 +88,50 @@ serve(async (req) => {
       }
     }
 
+    // Calculate break strategy based on number of tasks
+    const taskCount = tasks.length;
+    const hasManyTasks = taskCount >= 8;
+    const hasModerateTasks = taskCount >= 5 && taskCount < 8;
+    
     let breakInstructions = "";
     switch (breakPreference) {
       case "none":
         breakInstructions = "Do NOT include any breaks between tasks.";
         break;
       case "short":
-        breakInstructions = "Include short 5-10 minute breaks between tasks, especially after high-energy tasks.";
+        if (hasManyTasks) {
+          breakInstructions = "Since there are many tasks, include 10-15 minute breaks between tasks to prevent burnout, especially after high-energy tasks.";
+        } else {
+          breakInstructions = "Include short 5-10 minute breaks between tasks, especially after high-energy tasks.";
+        }
         break;
       case "long":
         breakInstructions = "Include longer 30+ minute breaks between major task blocks to prevent burnout.";
         break;
       case "auto":
-        breakInstructions = "Intelligently add breaks based on task energy levels: 5-10 min after high-energy tasks, 15-20 min after multiple consecutive tasks, and a longer lunch break if the schedule extends beyond 4 hours.";
+        if (hasManyTasks) {
+          breakInstructions = "Since there are many tasks (8+), be generous with breaks: 10-15 min after high-energy tasks, 20-30 min after every 3-4 consecutive tasks to prevent burnout.";
+        } else if (hasModerateTasks) {
+          breakInstructions = "With a moderate number of tasks, add 5-10 min breaks after high-energy tasks, and 15-20 min after multiple consecutive tasks.";
+        } else {
+          breakInstructions = "Add short 5-10 min breaks after high-energy tasks when needed.";
+        }
         break;
     }
+    
+    // Add meal break suggestions based on time
+    const [startHour] = startTime.split(':').map(Number);
+    let mealBreakInstructions = "\n\nMEAL BREAKS: ";
+    
+    if (startHour <= 9) {
+      mealBreakInstructions += "If the schedule starts before 9am, consider adding a 15-20 minute breakfast break around 7:30-8:30am. ";
+    }
+    
+    mealBreakInstructions += "If the schedule extends past noon, add a 45-60 minute lunch break between 12:00-2:00pm. ";
+    mealBreakInstructions += "If the schedule extends past 6pm, consider adding a 45-60 minute dinner break between 6:00-8:00pm.";
+    mealBreakInstructions += "\nMeal breaks should be labeled as 'Breakfast Break', 'Lunch Break', or 'Dinner Break' with isBreak: true.";
+    
+    breakInstructions += mealBreakInstructions;
 
     // Build calendar events description for the prompt
     let calendarEventsInfo = "";
