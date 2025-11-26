@@ -37,7 +37,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tasks, startTime = "09:00", breakPreference = "auto", userId } = await req.json();
+    const { tasks, startTime = "09:00", breakPreference = "auto", userId, planningPeriod = "tomorrow" } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -53,6 +53,7 @@ serve(async (req) => {
     console.log("Optimizing schedule for tasks:", tasks);
     console.log("Start time:", startTime);
     console.log("Break preference:", breakPreference);
+    console.log("Planning period:", planningPeriod);
     console.log("User ID:", userId);
 
     // Fetch calendar events for the user if userId is provided
@@ -60,23 +61,30 @@ serve(async (req) => {
     if (userId) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       
-      // Get today's date range
+      // Get date range based on planning period
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(today);
-      endOfDay.setHours(23, 59, 59, 999);
+      const endDate = new Date(today);
+      
+      if (planningPeriod === "week") {
+        // Get events for the next 7 days
+        endDate.setDate(endDate.getDate() + 7);
+      } else {
+        // Get events for tomorrow only
+        endDate.setHours(23, 59, 59, 999);
+      }
 
       const { data, error } = await supabase
         .from("calendar_events")
         .select("*")
         .eq("user_id", userId)
         .gte("start_time", today.toISOString())
-        .lte("start_time", endOfDay.toISOString())
+        .lte("start_time", endDate.toISOString())
         .order("start_time", { ascending: true });
 
       if (!error && data) {
         calendarEvents = data;
-        console.log(`Found ${calendarEvents.length} calendar events for today`);
+        console.log(`Found ${calendarEvents.length} calendar events for ${planningPeriod}`);
       }
     }
 
@@ -113,7 +121,60 @@ serve(async (req) => {
       calendarEventsInfo += "\nYou MUST schedule tasks only in the time slots that are FREE (not listed above). Find gaps between calendar events and use those for task scheduling.";
     }
 
-    const systemPrompt = `You are an expert schedule optimizer. Given a list of tasks with their duration, energy level requirements, and priority, create an optimized daily schedule starting at ${startTime}.
+    let systemPrompt = "";
+    let responseFormat = "";
+
+    if (planningPeriod === "week") {
+      // Weekly planning prompt
+      responseFormat = `{
+  "weeklySchedule": {
+    "Monday": [/* array of tasks with startTime, endTime, etc. */],
+    "Tuesday": [/* array of tasks */],
+    "Wednesday": [/* array of tasks */],
+    "Thursday": [/* array of tasks */],
+    "Friday": [/* array of tasks */],
+    "Saturday": [/* array of tasks */],
+    "Sunday": [/* array of tasks */]
+  }
+}`;
+
+      systemPrompt = `You are an expert weekly schedule optimizer. Given a list of tasks, distribute them intelligently across a 7-day week (Monday through Sunday), starting each day at ${startTime}.
+
+${calendarEventsInfo}
+
+Weekly optimization rules:
+1. Distribute tasks evenly across the week to prevent burnout
+2. Schedule high-priority tasks early in the week (Monday-Wednesday)
+3. Schedule high-energy tasks during morning hours (9am-12pm) on each day
+4. Lighter tasks and low-energy work for Thursday-Friday
+5. Keep weekends lighter with optional tasks or rest days
+6. Balance daily workload - aim for 4-6 hours of focused work per weekday
+7. ${breakInstructions}
+8. Each day should start at ${startTime}
+9. ${calendarEvents.length > 0 ? "CRITICAL: Work around existing calendar events. Do NOT schedule tasks during busy times." : ""}
+
+IMPORTANT: For breaks, add them as separate items with "isBreak": true. Each day's tasks should be in chronological order with proper start and end times.
+
+Return ONLY a valid JSON object with this exact structure (no additional text):
+${responseFormat}`;
+    } else {
+      // Daily planning prompt (tomorrow)
+      responseFormat = `{
+  "schedule": [
+    {
+      "id": "task-id",
+      "title": "task title",
+      "duration": 60,
+      "energyLevel": "high",
+      "priority": "high",
+      "startTime": "09:00",
+      "endTime": "10:00",
+      "isBreak": false
+    }
+  ]
+}`;
+
+      systemPrompt = `You are an expert schedule optimizer. Given a list of tasks with their duration, energy level requirements, and priority, create an optimized daily schedule starting at ${startTime}.
 
 ${calendarEventsInfo}
 
@@ -129,30 +190,8 @@ Optimization rules:
 IMPORTANT: For breaks, add them as separate items in the schedule array with "isBreak": true. Break titles should describe the break (e.g., "Short Break", "Coffee Break", "Lunch Break", "Rest Period").
 
 Return ONLY a valid JSON object with this exact structure (no additional text):
-{
-  "schedule": [
-    {
-      "id": "task-id",
-      "title": "task title",
-      "duration": 60,
-      "energyLevel": "high",
-      "priority": "high",
-      "startTime": "09:00",
-      "endTime": "10:00",
-      "isBreak": false
-    },
-    {
-      "id": "break-1",
-      "title": "Coffee Break",
-      "duration": 10,
-      "energyLevel": "low",
-      "priority": "low",
-      "startTime": "10:00",
-      "endTime": "10:10",
-      "isBreak": true
+${responseFormat}`;
     }
-  ]
-}`;
 
     const userPrompt = `Optimize the following tasks into a schedule:\n${JSON.stringify(tasks, null, 2)}`;
 

@@ -10,6 +10,7 @@ import { TaskTemplates } from "@/components/TaskTemplates";
 import { RecurringTasks } from "@/components/RecurringTasks";
 import { TaskDependencies } from "@/components/TaskDependencies";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
+import { WeeklyCalendar } from "@/components/WeeklyCalendar";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
 import { CalendarImport } from "@/components/CalendarImport";
@@ -29,6 +30,7 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [schedule, setSchedule] = useState<ScheduledTask[]>([]);
+  const [weeklySchedule, setWeeklySchedule] = useState<Record<string, ScheduledTask[]>>({});
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [startTime, setStartTime] = useState("09:00");
   const [breakPreference, setBreakPreference] = useState<"none" | "short" | "long" | "auto">("auto");
@@ -234,16 +236,26 @@ const Index = () => {
           startTime, 
           breakPreference,
           userId: session?.user?.id,
+          planningPeriod,
         },
       });
 
       if (error) throw error;
 
-      setSchedule(data.schedule);
+      if (planningPeriod === "week") {
+        setWeeklySchedule(data.weeklySchedule);
+        setSchedule([]); // Clear daily schedule
+      } else {
+        setSchedule(data.schedule);
+        setWeeklySchedule({}); // Clear weekly schedule
+      }
+      
       setCompletedTaskIds(new Set()); // Reset completed tasks for new schedule
       toast({
         title: "Schedule optimized!",
-        description: "Your tasks have been arranged for optimal productivity",
+        description: planningPeriod === "week" 
+          ? "Your tasks have been distributed across the week"
+          : "Your tasks have been arranged for optimal productivity",
       });
     } catch (error) {
       console.error("Error optimizing schedule:", error);
@@ -258,16 +270,24 @@ const Index = () => {
   };
 
   const handleSaveSchedule = async () => {
-    if (!session?.user || schedule.length === 0) return;
+    if (!session?.user) return;
+    
+    const hasSchedule = schedule.length > 0 || Object.keys(weeklySchedule).length > 0;
+    if (!hasSchedule) return;
 
     const name = scheduleName || `Schedule ${new Date().toLocaleDateString()}`;
+    
+    // Save either weekly or daily schedule
+    const scheduleData = Object.keys(weeklySchedule).length > 0 
+      ? { weeklySchedule } 
+      : schedule;
 
     const { error } = await supabase.from("schedules").insert({
       user_id: session.user.id,
       name,
       start_time: startTime,
       break_preference: breakPreference,
-      schedule_data: schedule as any,
+      schedule_data: scheduleData as any,
     });
 
     if (error) {
@@ -624,7 +644,7 @@ const Index = () => {
           </Card>
         )}
 
-        {schedule.length === 0 ? (
+        {schedule.length === 0 && Object.keys(weeklySchedule).length === 0 ? (
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column - Input */}
             <div className="lg:col-span-2 space-y-6">
@@ -840,16 +860,20 @@ const Index = () => {
 
           {/* Fullscreen Schedule */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-foreground">Your Optimized Schedule</h2>
+            <h2 className="text-2xl font-semibold text-foreground">
+              {Object.keys(weeklySchedule).length > 0 ? "Your Weekly Schedule" : "Your Optimized Schedule"}
+            </h2>
             <div className="flex gap-2">
-              <Button
-                onClick={() => setIsFocusMode(true)}
-                variant="outline"
-                className="bg-primary/10 hover:bg-primary/20 border-primary/30"
-              >
-                <Focus className="w-4 h-4 mr-2" />
-                Focus Mode
-              </Button>
+              {schedule.length > 0 && (
+                <Button
+                  onClick={() => setIsFocusMode(true)}
+                  variant="outline"
+                  className="bg-primary/10 hover:bg-primary/20 border-primary/30"
+                >
+                  <Focus className="w-4 h-4 mr-2" />
+                  Focus Mode
+                </Button>
+              )}
               <Button
                 onClick={handleRescheduleToTomorrow}
                 variant="outline"
@@ -859,7 +883,10 @@ const Index = () => {
                 Reschedule to Tomorrow
               </Button>
               <Button
-                onClick={() => setSchedule([])}
+                onClick={() => {
+                  setSchedule([]);
+                  setWeeklySchedule({});
+                }}
                 variant="outline"
                 className="bg-secondary hover:bg-secondary/80 border-border"
               >
@@ -881,17 +908,56 @@ const Index = () => {
               </Button>
             </div>
           </div>
+          
+          {/* Show either weekly or daily schedule */}
+          {Object.keys(weeklySchedule).length > 0 ? (
+            <WeeklyCalendar
+              weeklySchedule={weeklySchedule}
+              onMarkTaskComplete={(task, day) => {
+                // Update weekly schedule with completed task
+                setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+                
+                // Remove task from the specific day
+                setWeeklySchedule((prev) => {
+                  const updatedDay = prev[day].filter((t) => t.id !== task.id);
+                  return { ...prev, [day]: updatedDay };
+                });
+
+                // Handle completion tracking
+                if (!task.isBreak && session?.user) {
+                  supabase.from("completed_tasks").insert({
+                    user_id: session.user.id,
+                    task_title: task.title,
+                    task_duration: task.duration,
+                    energy_level: task.energyLevel,
+                    priority: task.priority,
+                  }).then(({ error }) => {
+                    if (error) {
+                      console.error("Error saving completed task:", error);
+                    }
+                  });
+                }
+
+                toast({
+                  title: "Task Completed!",
+                  description: `"${task.title}" has been marked as complete`,
+                });
+              }}
+              completedTaskIds={completedTaskIds}
+            />
+          ) : (
             <ScheduleTimeline 
               schedule={schedule} 
               onMarkComplete={handleMarkTaskComplete}
               onReorder={setSchedule}
               userId={session?.user?.id}
             />
+          )}
         </div>
       )}
 
         {/* Task History Section */}
-        {session && schedule.length === 0 && (
+        {session && schedule.length === 0 && Object.keys(weeklySchedule).length === 0 && (
           <div className="mt-8">
             <TaskHistory userId={session.user.id} />
           </div>
