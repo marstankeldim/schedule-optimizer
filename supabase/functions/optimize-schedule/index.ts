@@ -211,26 +211,27 @@ serve(async (req) => {
 
       systemPrompt = `You are an expert weekly schedule optimizer. Given a list of tasks, distribute them intelligently across the selected workdays of the week, starting each day at ${startTime}.
 
-IMPORTANT: The user has selected these workdays: ${selectedWorkdays.join(", ")}. Do NOT schedule ANY tasks on non-workdays. Non-workdays should have empty arrays.
+      IMPORTANT: The user has selected these workdays: ${selectedWorkdays.join(", ")}. Do NOT schedule ANY tasks on non-workdays. Non-workdays should have empty arrays.
 
-${calendarEventsInfo}
+      ${calendarEventsInfo}
 
-Weekly optimization rules:
-1. ONLY schedule tasks on these days: ${selectedWorkdays.join(", ")}
-2. For non-workdays (not in the list above), return an empty array []
-3. Distribute tasks evenly across the selected workdays to prevent burnout
-4. Schedule high-priority tasks early in the week if Monday-Wednesday are workdays
-5. Schedule high-energy tasks during morning hours (9am-12pm) on each workday
-6. Lighter tasks and low-energy work for later in the week
-7. Balance daily workload - aim for 4-6 hours of focused work per workday
-8. ${breakInstructions}
-9. Each workday should start at ${startTime}
-10. ${calendarEvents.length > 0 ? "CRITICAL: Work around existing calendar events. Do NOT schedule tasks during busy times." : ""}
+      Weekly optimization rules:
+      1. ONLY schedule tasks on these days: ${selectedWorkdays.join(", ")}
+      2. For non-workdays (not in the list above), return an empty array []
+      3. EVERY task from the input list must appear at least once across the weeklySchedule. Do not drop or skip any tasks, even if days become long.
+      4. Distribute tasks evenly across the selected workdays to prevent burnout
+      5. Schedule high-priority tasks early in the week if Monday-Wednesday are workdays
+      6. Schedule high-energy tasks during morning hours (9am-12pm) on each workday
+      7. Lighter tasks and low-energy work for later in the week
+      8. Balance daily workload - aim for 4-6 hours of focused work per workday
+      9. ${breakInstructions}
+      10. Each workday should start at ${startTime}
+      11. ${calendarEvents.length > 0 ? "CRITICAL: Work around existing calendar events. Do NOT schedule tasks during busy times." : ""}
 
-IMPORTANT: For breaks, add them as separate items with "isBreak": true. Each day's tasks should be in chronological order with proper start and end times.
+      IMPORTANT: For breaks, add them as separate items with "isBreak": true. Each day's tasks should be in chronological order with proper start and end times.
 
-Return ONLY a valid JSON object with this exact structure (no additional text):
-${responseFormat}`;
+      Return ONLY a valid JSON object with this exact structure (no additional text):
+      ${responseFormat}`;
     } else {
       // Daily planning prompt (tomorrow)
       responseFormat = `{

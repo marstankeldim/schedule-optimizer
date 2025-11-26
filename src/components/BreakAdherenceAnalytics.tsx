@@ -101,6 +101,14 @@ export const BreakAdherenceAnalytics = ({ userId }: BreakAdherenceAnalyticsProps
     }
   };
 
+  const getMostConsistentBreakType = () => {
+    const entries = Object.entries(stats) as [keyof BreakTypeStats, BreakStats][];
+    const withData = entries.filter(([, s]) => s.total > 0);
+    if (withData.length === 0) return null;
+    withData.sort((a, b) => b[1].adherenceRate - a[1].adherenceRate);
+    return withData[0][0];
+  };
+
   return (
     <Card className="p-6 bg-gradient-card border-border shadow-card">
       <div className="flex items-center justify-between mb-4">
@@ -120,6 +128,25 @@ export const BreakAdherenceAnalytics = ({ userId }: BreakAdherenceAnalyticsProps
         <div className="text-center text-muted-foreground py-8">Loading...</div>
       ) : (
         <div className="space-y-6">
+          {(() => {
+            const type = getMostConsistentBreakType();
+            if (!type) return null;
+            return (
+              <div className="p-3 rounded-lg bg-secondary/60 border border-border/60 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">Most consistent break type</span>
+                </div>
+                <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <span>{getLabel(type)}</span>
+                  <span className="text-primary">
+                    {stats[type].adherenceRate}%
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
           {(Object.keys(stats) as Array<keyof BreakTypeStats>).map((type) => (
             <div key={type} className="space-y-2">
               <div className="flex items-center justify-between">
@@ -134,10 +161,15 @@ export const BreakAdherenceAnalytics = ({ userId }: BreakAdherenceAnalyticsProps
               <Progress value={stats[type].adherenceRate} className="h-2" />
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Adherence Rate</span>
-                <span className={`font-semibold ${
-                  stats[type].adherenceRate >= 80 ? "text-primary" : 
-                  stats[type].adherenceRate >= 50 ? "text-accent" : "text-destructive"
-                }`}>
+                <span
+                  className={`font-semibold ${
+                    stats[type].adherenceRate >= 80
+                      ? "text-primary"
+                      : stats[type].adherenceRate >= 50
+                      ? "text-accent"
+                      : "text-destructive"
+                  }`}
+                >
                   {stats[type].adherenceRate}%
                 </span>
               </div>
