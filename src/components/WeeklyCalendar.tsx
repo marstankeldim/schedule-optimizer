@@ -93,7 +93,7 @@ export const WeeklyCalendar = ({
                           task.isBreak
                             ? "bg-muted/50 border-muted"
                             : isCompleted
-                            ? "bg-success/10 border-success/50 opacity-60"
+                            ? "bg-primary/20 border-primary ring-2 ring-primary/30"
                             : "bg-card border-border hover:border-primary/50"
                         }`}
                       >
@@ -110,14 +110,14 @@ export const WeeklyCalendar = ({
                             </p>
                           </div>
                           
-                          {!task.isBreak && onMarkTaskComplete && !isCompleted && (
+                          {!task.isBreak && onMarkTaskComplete && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-5 w-5 p-0 shrink-0"
+                              className={`h-5 w-5 p-0 shrink-0 ${isCompleted ? "text-primary" : ""}`}
                               onClick={() => onMarkTaskComplete(task, day)}
                             >
-                              <CheckCircle2 className="w-3 h-3" />
+                              <CheckCircle2 className={`w-3 h-3 ${isCompleted ? "fill-primary" : ""}`} />
                             </Button>
                           )}
                         </div>
