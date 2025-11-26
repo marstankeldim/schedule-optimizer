@@ -149,6 +149,7 @@ export type Database = {
           id: string
           is_active: boolean
           last_generated_date: string | null
+          preferred_time: string | null
           priority: string
           recurrence_pattern: Json
           recurrence_type: Database["public"]["Enums"]["recurrence_type"]
@@ -165,6 +166,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_generated_date?: string | null
+          preferred_time?: string | null
           priority: string
           recurrence_pattern?: Json
           recurrence_type: Database["public"]["Enums"]["recurrence_type"]
@@ -181,6 +183,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           last_generated_date?: string | null
+          preferred_time?: string | null
           priority?: string
           recurrence_pattern?: Json
           recurrence_type?: Database["public"]["Enums"]["recurrence_type"]
@@ -267,6 +270,7 @@ export type Database = {
           energy_level: string
           id: string
           priority: string
+          recurring_task_id: string | null
           title: string
           user_id: string
         }
@@ -276,6 +280,7 @@ export type Database = {
           energy_level: string
           id?: string
           priority: string
+          recurring_task_id?: string | null
           title: string
           user_id: string
         }
@@ -285,10 +290,19 @@ export type Database = {
           energy_level?: string
           id?: string
           priority?: string
+          recurring_task_id?: string | null
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_recurring_task_id_fkey"
+            columns: ["recurring_task_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_achievements: {
         Row: {

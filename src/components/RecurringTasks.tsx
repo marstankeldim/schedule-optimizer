@@ -181,7 +181,10 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
   const generateTasksForToday = async () => {
     const today = new Date();
     const dayOfWeek = today.getDay();
-    const tasksToAdd: Omit<Task, "id">[] = [];
+    const tasksWithRecurringId: Array<{
+      task: Omit<Task, "id">;
+      recurringTaskId: string;
+    }> = [];
 
     for (const recurringTask of recurringTasks) {
       if (!recurringTask.is_active) continue;
@@ -211,21 +214,63 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
       }
 
       if (shouldGenerate) {
-        tasksToAdd.push({
-          title: recurringTask.title,
-          duration: recurringTask.duration,
-          energyLevel: recurringTask.energy_level as "high" | "medium" | "low",
-          priority: recurringTask.priority as "high" | "medium" | "low",
+        tasksWithRecurringId.push({
+          task: {
+            title: recurringTask.title,
+            duration: recurringTask.duration,
+            energyLevel: recurringTask.energy_level as "high" | "medium" | "low",
+            priority: recurringTask.priority as "high" | "medium" | "low",
+          },
+          recurringTaskId: recurringTask.id,
         });
       }
     }
 
-    if (tasksToAdd.length > 0) {
-      onGenerateTasks(tasksToAdd);
-      toast({
-        title: "Recurring tasks added",
-        description: `${tasksToAdd.length} recurring task(s) added to your task list`,
-      });
+    if (tasksWithRecurringId.length > 0) {
+      // Insert tasks with recurring_task_id
+      const tasksToInsert = tasksWithRecurringId.map(({ task, recurringTaskId }) => ({
+        user_id: userId,
+        title: task.title,
+        duration: task.duration,
+        energy_level: task.energyLevel,
+        priority: task.priority,
+        recurring_task_id: recurringTaskId,
+      }));
+
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert(tasksToInsert)
+        .select();
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add recurring tasks",
+          variant: "destructive",
+        });
+      } else {
+        const addedTasks: Task[] = data.map((d) => ({
+          id: d.id,
+          title: d.title,
+          duration: d.duration,
+          energyLevel: d.energy_level as "high" | "medium" | "low",
+          priority: d.priority as "high" | "medium" | "low",
+          recurringTaskId: d.recurring_task_id,
+        }));
+        
+        onGenerateTasks(addedTasks.map(t => ({
+          title: t.title,
+          duration: t.duration,
+          energyLevel: t.energyLevel,
+          priority: t.priority,
+          recurringTaskId: t.recurringTaskId,
+        })));
+
+        toast({
+          title: "Recurring tasks added",
+          description: `${addedTasks.length} recurring task(s) added to your task list`,
+        });
+      }
     } else {
       toast({
         title: "No recurring tasks for today",
@@ -489,6 +534,12 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
                     <Repeat className="w-3 h-3" />
                     {getRecurrenceDescription(task)}
                   </span>
+                  {task.preferred_time && (
+                    <span className="flex items-center gap-1 text-primary">
+                      <Clock className="w-3 h-3" />
+                      Preferred: {task.preferred_time}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
