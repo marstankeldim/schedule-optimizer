@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskInput, Task } from "@/components/TaskInput";
+import { TaskTemplates } from "@/components/TaskTemplates";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
@@ -405,6 +406,9 @@ const Index = () => {
               <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
               <TaskInput onAddTask={handleAddTask} />
             </div>
+
+            {/* Task Templates */}
+            <TaskTemplates onSelectTemplate={handleAddTask} />
 
             {/* Task List */}
             {tasks.length > 0 && (
