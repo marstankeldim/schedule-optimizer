@@ -16,6 +16,7 @@ import { TaskHistory } from "@/components/TaskHistory";
 import { CalendarImport } from "@/components/CalendarImport";
 import { FocusMode } from "@/components/FocusMode";
 import { AIInsights } from "@/components/AIInsights";
+import { SchedulePreferences } from "@/components/SchedulePreferences";
 import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch, Focus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
@@ -833,6 +834,11 @@ const Index = () => {
             {/* AI Insights */}
             {session?.user && (
               <AIInsights userId={session.user.id} />
+            )}
+            
+            {/* Schedule Preferences */}
+            {session?.user && (
+              <SchedulePreferences userId={session.user.id} />
             )}
             
             {/* Goals Sidebar */}

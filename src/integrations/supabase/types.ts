@@ -397,6 +397,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          breakfast_duration: number | null
+          breakfast_time: string | null
+          created_at: string
+          dinner_duration: number | null
+          dinner_time: string | null
+          enable_hydration_reminders: boolean | null
+          enable_nutrition_reminders: boolean | null
+          hydration_interval: number | null
+          id: string
+          lunch_duration: number | null
+          lunch_time: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          breakfast_duration?: number | null
+          breakfast_time?: string | null
+          created_at?: string
+          dinner_duration?: number | null
+          dinner_time?: string | null
+          enable_hydration_reminders?: boolean | null
+          enable_nutrition_reminders?: boolean | null
+          hydration_interval?: number | null
+          id?: string
+          lunch_duration?: number | null
+          lunch_time?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          breakfast_duration?: number | null
+          breakfast_time?: string | null
+          created_at?: string
+          dinner_duration?: number | null
+          dinner_time?: string | null
+          enable_hydration_reminders?: boolean | null
+          enable_nutrition_reminders?: boolean | null
+          hydration_interval?: number | null
+          id?: string
+          lunch_duration?: number | null
+          lunch_time?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

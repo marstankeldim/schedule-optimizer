@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Zap, Download, Calendar, Coffee, CheckCircle2, GripVertical, GitBranch, Repeat } from "lucide-react";
+import { Clock, Zap, Download, Calendar, Coffee, CheckCircle2, GripVertical, GitBranch, Repeat, Utensils, Droplets } from "lucide-react";
 import type { Task } from "./TaskInput";
 import { downloadICalFile } from "@/lib/icalGenerator";
 import { useToast } from "@/hooks/use-toast";
@@ -75,7 +75,13 @@ const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesC
       style={style}
       className={`p-4 ${
         task.isBreak 
-          ? "bg-muted/50 border-muted-foreground/30" 
+          ? task.title.toLowerCase().includes('hydration') || task.title.includes('💧')
+            ? "bg-accent/10 border-accent/30"
+            : task.title.toLowerCase().includes('breakfast') || 
+              task.title.toLowerCase().includes('lunch') || 
+              task.title.toLowerCase().includes('dinner')
+              ? "bg-primary/10 border-primary/30"
+              : "bg-muted/50 border-muted-foreground/30"
           : isCompleted
             ? "bg-primary/20 border-primary ring-2 ring-primary/30"
             : task.recurringTaskId
@@ -100,7 +106,15 @@ const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesC
             </span>
             {task.isBreak ? (
               <Badge variant="outline" className="bg-muted/20 text-muted-foreground border-muted-foreground/30">
-                <Coffee className="w-3 h-3 mr-1" />
+                {task.title.toLowerCase().includes('hydration') || task.title.includes('💧') ? (
+                  <Droplets className="w-3 h-3 mr-1" />
+                ) : task.title.toLowerCase().includes('breakfast') || 
+                   task.title.toLowerCase().includes('lunch') || 
+                   task.title.toLowerCase().includes('dinner') ? (
+                  <Utensils className="w-3 h-3 mr-1" />
+                ) : (
+                  <Coffee className="w-3 h-3 mr-1" />
+                )}
                 Break
               </Badge>
             ) : (
@@ -130,6 +144,17 @@ const SortableTaskItem = ({ task, onMarkComplete, hasDependencies, dependenciesC
           <h3 className={`text-lg font-semibold ${
             task.isBreak ? "text-muted-foreground" : "text-foreground group-hover:text-primary"
           } transition-colors`}>
+            {task.isBreak && (
+              task.title.toLowerCase().includes('hydration') || task.title.includes('💧') ? (
+                <Droplets className="w-4 h-4 inline mr-2" />
+              ) : task.title.toLowerCase().includes('breakfast') || 
+                 task.title.toLowerCase().includes('lunch') || 
+                 task.title.toLowerCase().includes('dinner') ? (
+                <Utensils className="w-4 h-4 inline mr-2" />
+              ) : (
+                <Coffee className="w-4 h-4 inline mr-2" />
+              )
+            )}
             {task.title}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">

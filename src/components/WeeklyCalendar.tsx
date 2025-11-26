@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Zap, AlertCircle, Coffee } from "lucide-react";
+import { Clock, Zap, AlertCircle, Coffee, Utensils, Droplets } from "lucide-react";
 import { ScheduledTask } from "@/components/ScheduleTimeline";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
@@ -91,7 +91,13 @@ export const WeeklyCalendar = ({
                         key={task.id}
                         className={`p-2 border transition-all ${
                           task.isBreak
-                            ? "bg-muted/50 border-muted"
+                            ? task.title.toLowerCase().includes('hydration') || task.title.includes('💧')
+                              ? "bg-accent/10 border-accent/30"
+                              : task.title.toLowerCase().includes('breakfast') || 
+                                task.title.toLowerCase().includes('lunch') || 
+                                task.title.toLowerCase().includes('dinner')
+                                ? "bg-primary/10 border-primary/30"
+                                : "bg-muted/50 border-muted"
                             : isCompleted
                             ? "bg-primary/20 border-primary ring-2 ring-primary/30"
                             : "bg-card border-border hover:border-primary/50"
@@ -102,7 +108,17 @@ export const WeeklyCalendar = ({
                             <h4 className={`font-medium text-xs ${
                               task.isBreak ? "text-muted-foreground" : "text-foreground"
                             } truncate`}>
-                              {task.isBreak && <Coffee className="w-3 h-3 inline mr-1" />}
+                              {task.isBreak && (
+                                task.title.toLowerCase().includes('hydration') || task.title.includes('💧') ? (
+                                  <Droplets className="w-3 h-3 inline mr-1" />
+                                ) : task.title.toLowerCase().includes('breakfast') || 
+                                   task.title.toLowerCase().includes('lunch') || 
+                                   task.title.toLowerCase().includes('dinner') ? (
+                                  <Utensils className="w-3 h-3 inline mr-1" />
+                                ) : (
+                                  <Coffee className="w-3 h-3 inline mr-1" />
+                                )
+                              )}
                               {task.title}
                             </h4>
                             <p className="text-[10px] text-muted-foreground mt-0.5">
