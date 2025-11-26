@@ -323,7 +323,7 @@ export const RecurringTasks = ({ userId, onTasksGenerated }: RecurringTasksProps
               className="bg-primary hover:bg-primary/90 shadow-glow font-semibold"
             >
               <Calendar className="w-4 h-4 mr-2" />
-              Add to Today's Tasks
+              Add Tasks
             </Button>
           )}
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
