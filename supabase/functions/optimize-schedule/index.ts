@@ -28,7 +28,7 @@ serve(async (req) => {
   }
 
   try {
-    const { tasks, startTime = "09:00" } = await req.json();
+    const { tasks, startTime = "09:00", breakPreference = "auto" } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -37,6 +37,23 @@ serve(async (req) => {
 
     console.log("Optimizing schedule for tasks:", tasks);
     console.log("Start time:", startTime);
+    console.log("Break preference:", breakPreference);
+
+    let breakInstructions = "";
+    switch (breakPreference) {
+      case "none":
+        breakInstructions = "Do NOT include any breaks between tasks.";
+        break;
+      case "short":
+        breakInstructions = "Include short 5-10 minute breaks between tasks, especially after high-energy tasks.";
+        break;
+      case "long":
+        breakInstructions = "Include longer 30+ minute breaks between major task blocks to prevent burnout.";
+        break;
+      case "auto":
+        breakInstructions = "Intelligently add breaks based on task energy levels: 5-10 min after high-energy tasks, 15-20 min after multiple consecutive tasks, and a longer lunch break if the schedule extends beyond 4 hours.";
+        break;
+    }
 
     const systemPrompt = `You are an expert schedule optimizer. Given a list of tasks with their duration, energy level requirements, and priority, create an optimized daily schedule starting at ${startTime}.
 
@@ -45,7 +62,9 @@ Optimization rules:
 2. Low-energy tasks should be scheduled during low-energy periods (after lunch, late afternoon)
 3. High-priority tasks should be scheduled first within their energy level group
 4. Minimize gaps between tasks for time efficiency
-5. Include a lunch break (1 hour) if the schedule extends beyond 4-5 hours
+5. ${breakInstructions}
+
+IMPORTANT: For breaks, add them as separate items in the schedule array with "isBreak": true. Break titles should describe the break (e.g., "Short Break", "Coffee Break", "Lunch Break", "Rest Period").
 
 Return ONLY a valid JSON object with this exact structure (no additional text):
 {
@@ -57,7 +76,18 @@ Return ONLY a valid JSON object with this exact structure (no additional text):
       "energyLevel": "high",
       "priority": "high",
       "startTime": "09:00",
-      "endTime": "10:00"
+      "endTime": "10:00",
+      "isBreak": false
+    },
+    {
+      "id": "break-1",
+      "title": "Coffee Break",
+      "duration": 10,
+      "energyLevel": "low",
+      "priority": "low",
+      "startTime": "10:00",
+      "endTime": "10:10",
+      "isBreak": true
     }
   ]
 }`;

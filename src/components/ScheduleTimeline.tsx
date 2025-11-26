@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Zap, Download, Calendar } from "lucide-react";
+import { Clock, Zap, Download, Calendar, Coffee } from "lucide-react";
 import type { Task } from "./TaskInput";
 import { downloadICalFile } from "@/lib/icalGenerator";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface ScheduledTask extends Task {
   startTime: string;
   endTime: string;
+  isBreak?: boolean;
 }
 
 interface ScheduleTimelineProps {
@@ -83,23 +84,38 @@ export const ScheduleTimeline = ({ schedule }: ScheduleTimelineProps) => {
       {schedule.map((task) => (
         <Card
           key={task.id}
-          className="p-4 bg-gradient-card border-border shadow-card hover:shadow-glow transition-all duration-300 group"
+          className={`p-4 ${
+            task.isBreak 
+              ? "bg-muted/50 border-muted-foreground/30" 
+              : "bg-gradient-card border-border hover:shadow-glow"
+          } shadow-card transition-all duration-300 group`}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-primary font-mono text-sm font-medium">
+                <span className={`font-mono text-sm font-medium ${task.isBreak ? "text-muted-foreground" : "text-primary"}`}>
                   {task.startTime} - {task.endTime}
                 </span>
-                <Badge variant="outline" className={getEnergyColor(task.energyLevel)}>
-                  <Zap className="w-3 h-3 mr-1" />
-                  {task.energyLevel}
-                </Badge>
-                <Badge variant="outline" className="border-border text-foreground">
-                  {getPriorityLabel(task.priority)}
-                </Badge>
+                {task.isBreak ? (
+                  <Badge variant="outline" className="bg-muted/20 text-muted-foreground border-muted-foreground/30">
+                    <Coffee className="w-3 h-3 mr-1" />
+                    Break
+                  </Badge>
+                ) : (
+                  <>
+                    <Badge variant="outline" className={getEnergyColor(task.energyLevel)}>
+                      <Zap className="w-3 h-3 mr-1" />
+                      {task.energyLevel}
+                    </Badge>
+                    <Badge variant="outline" className="border-border text-foreground">
+                      {getPriorityLabel(task.priority)}
+                    </Badge>
+                  </>
+                )}
               </div>
-              <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+              <h3 className={`text-lg font-semibold ${
+                task.isBreak ? "text-muted-foreground" : "text-foreground group-hover:text-primary"
+              } transition-colors`}>
                 {task.title}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">

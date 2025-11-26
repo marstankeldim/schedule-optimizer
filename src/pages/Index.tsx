@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskInput, Task } from "@/components/TaskInput";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
-import { Sparkles, Trash2, Calendar, Clock } from "lucide-react";
+import { Sparkles, Trash2, Calendar, Clock, Coffee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,6 +15,7 @@ const Index = () => {
   const [schedule, setSchedule] = useState<ScheduledTask[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [startTime, setStartTime] = useState("09:00");
+  const [breakPreference, setBreakPreference] = useState<"none" | "short" | "long" | "auto">("auto");
   const { toast } = useToast();
 
   const handleAddTask = (newTask: Omit<Task, "id">) => {
@@ -41,7 +43,7 @@ const Index = () => {
     setIsOptimizing(true);
     try {
       const { data, error } = await supabase.functions.invoke("optimize-schedule", {
-        body: { tasks, startTime },
+        body: { tasks, startTime, breakPreference },
       });
 
       if (error) throw error;
@@ -129,23 +131,43 @@ const Index = () => {
               </Card>
             )}
 
-            {/* Start Time Selection */}
+            {/* Start Time & Break Preferences */}
             {tasks.length > 0 && (
-              <Card className="p-6 bg-gradient-card border-border shadow-card">
-                <Label htmlFor="startTime" className="text-foreground flex items-center gap-2 mb-3">
-                  <Clock className="w-4 h-4 text-primary" />
-                  What time does your day start?
-                </Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="bg-secondary border-border focus:border-primary transition-colors"
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Your schedule will be optimized starting from this time
-                </p>
+              <Card className="p-6 bg-gradient-card border-border shadow-card space-y-4">
+                <div>
+                  <Label htmlFor="startTime" className="text-foreground flex items-center gap-2 mb-3">
+                    <Clock className="w-4 h-4 text-primary" />
+                    What time does your day start?
+                  </Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="bg-secondary border-border focus:border-primary transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="breaks" className="text-foreground flex items-center gap-2 mb-3">
+                    <Coffee className="w-4 h-4 text-primary" />
+                    Break preferences
+                  </Label>
+                  <Select value={breakPreference} onValueChange={(v) => setBreakPreference(v as typeof breakPreference)}>
+                    <SelectTrigger id="breaks" className="bg-secondary border-border focus:border-primary">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No breaks</SelectItem>
+                      <SelectItem value="short">Short breaks (5-10 min)</SelectItem>
+                      <SelectItem value="long">Long breaks (30+ min)</SelectItem>
+                      <SelectItem value="auto">Auto (AI decides based on energy)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Breaks help prevent burnout and maintain productivity
+                  </p>
+                </div>
               </Card>
             )}
 
