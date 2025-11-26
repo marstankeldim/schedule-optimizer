@@ -13,13 +13,22 @@ interface Task {
   priority: "high" | "medium" | "low";
 }
 
+// Helper function to calculate time
+const addMinutesToTime = (time: string, minutes: number): string => {
+  const [hours, mins] = time.split(':').map(Number);
+  const totalMinutes = hours * 60 + mins + minutes;
+  const newHours = Math.floor(totalMinutes / 60) % 24;
+  const newMins = totalMinutes % 60;
+  return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { tasks } = await req.json();
+    const { tasks, startTime = "09:00" } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -27,15 +36,16 @@ serve(async (req) => {
     }
 
     console.log("Optimizing schedule for tasks:", tasks);
+    console.log("Start time:", startTime);
 
-    const systemPrompt = `You are an expert schedule optimizer. Given a list of tasks with their duration, energy level requirements, and priority, create an optimized daily schedule starting at 9:00 AM.
+    const systemPrompt = `You are an expert schedule optimizer. Given a list of tasks with their duration, energy level requirements, and priority, create an optimized daily schedule starting at ${startTime}.
 
 Optimization rules:
-1. High-energy tasks should be scheduled during peak productivity hours (9 AM - 12 PM, 2 PM - 4 PM)
+1. High-energy tasks should be scheduled during peak productivity hours (morning and early afternoon)
 2. Low-energy tasks should be scheduled during low-energy periods (after lunch, late afternoon)
 3. High-priority tasks should be scheduled first within their energy level group
 4. Minimize gaps between tasks for time efficiency
-5. Include a lunch break around 12:30 PM - 1:30 PM if the schedule extends that long
+5. Include a lunch break (1 hour) if the schedule extends beyond 4-5 hours
 
 Return ONLY a valid JSON object with this exact structure (no additional text):
 {
