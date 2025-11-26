@@ -16,9 +16,11 @@ import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, Check
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
 import { useStreakTracking } from "@/hooks/useStreakTracking";
+import { useAchievements } from "@/hooks/useAchievements";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { StreakTracker } from "@/components/StreakTracker";
+import { Achievements } from "@/components/Achievements";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -38,6 +40,7 @@ const Index = () => {
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
   const { currentStreak, longestStreak, loading: streakLoading, updateDailyCompletion } = useStreakTracking(session?.user?.id);
+  const { checkTaskCompletionAchievements, checkSpeedDemon, checkStreakAchievements } = useAchievements(session?.user?.id);
 
   useEffect(() => {
     // Set up auth state listener
@@ -300,6 +303,24 @@ const Index = () => {
       const nonBreakTasks = schedule.filter(t => !t.isBreak);
       const completedTasks = nonBreakTasks.length - finalSchedule.filter(t => !t.isBreak).length;
       updateDailyCompletion(completedTasks, nonBreakTasks.length);
+
+      // Check achievements
+      if (session?.user?.id) {
+        checkTaskCompletionAchievements(new Date());
+        
+        // Check if all tasks are done (Speed Demon)
+        if (finalSchedule.filter(t => !t.isBreak).length === 0 && nonBreakTasks.length > 0) {
+          const lastTask = schedule[schedule.length - 1];
+          if (lastTask && !lastTask.isBreak) {
+            checkSpeedDemon(lastTask.endTime, new Date());
+          }
+        }
+        
+        // Check streak achievements
+        if (completedTasks === nonBreakTasks.length) {
+          checkStreakAchievements(currentStreak + 1);
+        }
+      }
 
       return finalSchedule;
     });
@@ -680,7 +701,7 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Column - Goals and Streak */}
+          {/* Right Column - Goals, Streak, and Achievements */}
           <div className="space-y-6">
             {/* Streak Tracker */}
             {session?.user && (
@@ -691,6 +712,11 @@ const Index = () => {
               />
             )}
             
+            {/* Achievements */}
+            {session?.user && (
+              <Achievements userId={session.user.id} currentStreak={currentStreak} />
+            )}
+            
             {/* Goals Sidebar */}
             {session?.user && (
               <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
@@ -699,8 +725,8 @@ const Index = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Goals and Streak Section at Top */}
-          <div className="grid lg:grid-cols-2 gap-6">
+          {/* Goals, Streak, and Achievements Section at Top */}
+          <div className="grid lg:grid-cols-3 gap-6">
             {session?.user && (
               <>
                 <StreakTracker
@@ -708,6 +734,7 @@ const Index = () => {
                   longestStreak={longestStreak}
                   loading={streakLoading}
                 />
+                <Achievements userId={session.user.id} currentStreak={currentStreak} />
                 <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
               </>
             )}
