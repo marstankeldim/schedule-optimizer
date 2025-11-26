@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, TrendingUp, Clock, Zap, Coffee, Calendar } from "lucide-react";
+import { ArrowLeft, TrendingUp, Clock, Zap, Coffee, Calendar, Trophy } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import {
   LineChart,
@@ -30,10 +30,19 @@ interface CompletedTask {
   completed_at: string;
 }
 
+interface GoalAchievement {
+  id: string;
+  goal_type: string;
+  target_value: number;
+  achieved_value: number;
+  achieved_at: string;
+}
+
 const Dashboard = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<GoalAchievement[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,6 +97,18 @@ const Dashboard = () => {
 
     if (schedulesData) {
       setSchedules(schedulesData);
+    }
+
+    // Load goal achievements
+    const { data: achievementsData } = await supabase
+      .from("goal_achievements")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .order("achieved_at", { ascending: false })
+      .limit(5);
+
+    if (achievementsData) {
+      setAchievements(achievementsData);
     }
   };
 
@@ -244,6 +265,43 @@ const Dashboard = () => {
             </div>
           </Card>
         </div>
+
+        {/* Recent Achievements */}
+        {achievements.length > 0 && (
+          <Card className="p-6 bg-gradient-card border-border shadow-card mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold text-foreground">Recent Achievements</h2>
+            </div>
+            <div className="space-y-3">
+              {achievements.map((achievement) => (
+                <div
+                  key={achievement.id}
+                  className="p-4 bg-secondary rounded-lg border border-border flex items-center justify-between"
+                >
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {achievement.goal_type === "weekly_tasks" && "Weekly Tasks Goal"}
+                      {achievement.goal_type === "break_adherence" && "Break Adherence Goal"}
+                      {achievement.goal_type === "energy_balance" && "Energy Balance Goal"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Achieved {achievement.achieved_value}
+                      {achievement.goal_type !== "weekly_tasks" && "%"} (Target: {achievement.target_value}
+                      {achievement.goal_type !== "weekly_tasks" && "%"})
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Trophy className="w-6 h-6 text-energy-medium mx-auto mb-1" />
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(achievement.achieved_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Charts */}
         <div className="grid lg:grid-cols-2 gap-8 mb-8">

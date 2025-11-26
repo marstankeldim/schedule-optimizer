@@ -44,6 +44,72 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_achievements: {
+        Row: {
+          achieved_at: string
+          achieved_value: number
+          goal_type: string
+          id: string
+          target_value: number
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          achieved_value: number
+          goal_type: string
+          id?: string
+          target_value: number
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          achieved_value?: number
+          goal_type?: string
+          id?: string
+          target_value?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          achieved: boolean
+          achieved_at: string | null
+          created_at: string
+          current_value: number
+          id: string
+          target_value: number
+          type: string
+          updated_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          achieved?: boolean
+          achieved_at?: string | null
+          created_at?: string
+          current_value?: number
+          id?: string
+          target_value: number
+          type: string
+          updated_at?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          achieved?: boolean
+          achieved_at?: string | null
+          created_at?: string
+          current_value?: number
+          id?: string
+          target_value?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       schedules: {
         Row: {
           break_preference: string
