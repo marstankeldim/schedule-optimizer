@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { CircularProgress } from "@/components/CircularProgress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Target, Trophy, Coffee, Zap, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -181,32 +181,37 @@ export const GoalsSidebar = ({ userId, onGoalAchieved }: GoalsSidebarProps) => {
           <p className="text-xs text-muted-foreground mt-1">Click + to create your first goal</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex flex-wrap gap-8 justify-center">
           {goals.map((goal) => (
-            <div key={goal.id} className="p-4 bg-secondary rounded-lg border border-border">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
+            <div key={goal.id} className="flex flex-col items-center">
+              <CircularProgress 
+                value={goal.current_value} 
+                max={goal.target_value}
+                size={140}
+                strokeWidth={10}
+              >
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-foreground">
+                    {Math.round(getProgress(goal))}%
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {goal.current_value}/{goal.target_value}
+                  </div>
+                </div>
+              </CircularProgress>
+              <div className="mt-3 text-center">
+                <div className="flex items-center gap-2 justify-center mb-1">
                   {getGoalIcon(goal.type)}
                   <span className="font-medium text-foreground text-sm">
                     {getGoalLabel(goal.type)}
                   </span>
                 </div>
                 {goal.achieved && (
-                  <Badge className="bg-energy-medium text-card">
+                  <Badge className="bg-energy-medium text-card mt-1">
                     <Trophy className="w-3 h-3 mr-1" />
                     Achieved!
                   </Badge>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Progress value={getProgress(goal)} className="h-2" />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>
-                    {goal.current_value} / {goal.target_value}
-                    {goal.type !== "weekly_tasks" && "%"}
-                  </span>
-                  <span>{Math.round(getProgress(goal))}%</span>
-                </div>
               </div>
             </div>
           ))}

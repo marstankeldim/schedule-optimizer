@@ -397,9 +397,10 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Input */}
-          <div className="lg:col-span-2 space-y-6">
+        {schedule.length === 0 ? (
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left Column - Input */}
+            <div className="lg:col-span-2 space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
               <TaskInput onAddTask={handleAddTask} />
@@ -497,44 +498,58 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Column - Schedule & Goals */}
+          {/* Right Column - Goals Only (schedule will move to fullscreen when generated) */}
           <div className="space-y-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold text-foreground">Your Optimized Schedule</h2>
-              {schedule.length > 0 && (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Schedule name (optional)"
-                    value={scheduleName}
-                    onChange={(e) => setScheduleName(e.target.value)}
-                    className="w-48 bg-secondary border-border"
-                  />
-                  <Button
-                    onClick={handleSaveSchedule}
-                    variant="outline"
-                    className="bg-secondary hover:bg-secondary/80 border-primary/30"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save
-                  </Button>
-                </div>
-              )}
-            </div>
-            <ScheduleTimeline schedule={schedule} onMarkComplete={handleMarkTaskComplete} />
-            
             {/* Goals Sidebar */}
             {session?.user && (
               <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
             )}
           </div>
         </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Goals Section at Top */}
+          {session?.user && (
+            <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
+          )}
 
-        {/* Task History Section */}
-        {session && (
-          <div className="mt-8">
-            <TaskHistory userId={session.user.id} />
+          {/* Fullscreen Schedule */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-semibold text-foreground">Your Optimized Schedule</h2>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setSchedule([])}
+                variant="outline"
+                className="bg-secondary hover:bg-secondary/80 border-border"
+              >
+                Add More Tasks
+              </Button>
+              <Input
+                placeholder="Schedule name (optional)"
+                value={scheduleName}
+                onChange={(e) => setScheduleName(e.target.value)}
+                className="w-48 bg-secondary border-border"
+              />
+              <Button
+                onClick={handleSaveSchedule}
+                variant="outline"
+                className="bg-secondary hover:bg-secondary/80 border-primary/30"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save
+              </Button>
+            </div>
           </div>
-        )}
+          <ScheduleTimeline schedule={schedule} onMarkComplete={handleMarkTaskComplete} />
+        </div>
+      )}
+
+      {/* Task History Section */}
+      {session && schedule.length === 0 && (
+        <div className="mt-8">
+          <TaskHistory userId={session.user.id} />
+        </div>
+      )}
       </div>
     </div>
   );
