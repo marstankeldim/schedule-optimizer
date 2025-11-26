@@ -540,7 +540,11 @@ const Index = () => {
               </Button>
             </div>
           </div>
-          <ScheduleTimeline schedule={schedule} onMarkComplete={handleMarkTaskComplete} />
+            <ScheduleTimeline 
+              schedule={schedule} 
+              onMarkComplete={handleMarkTaskComplete}
+              onReorder={setSchedule}
+            />
         </div>
       )}
 

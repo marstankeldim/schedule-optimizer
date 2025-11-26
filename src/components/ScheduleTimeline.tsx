@@ -1,10 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Zap, Download, Calendar, Coffee, CheckCircle2 } from "lucide-react";
+import { Clock, Zap, Download, Calendar, Coffee, CheckCircle2, GripVertical } from "lucide-react";
 import type { Task } from "./TaskInput";
 import { downloadICalFile } from "@/lib/icalGenerator";
 import { useToast } from "@/hooks/use-toast";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export interface ScheduledTask extends Task {
   startTime: string;
@@ -14,6 +17,12 @@ export interface ScheduledTask extends Task {
 
 interface ScheduleTimelineProps {
   schedule: ScheduledTask[];
+  onMarkComplete?: (task: ScheduledTask) => void;
+  onReorder?: (newSchedule: ScheduledTask[]) => void;
+}
+
+interface SortableTaskItemProps {
+  task: ScheduledTask;
   onMarkComplete?: (task: ScheduledTask) => void;
 }
 
@@ -39,8 +48,149 @@ const getPriorityLabel = (priority: Task["priority"]) => {
   }
 };
 
-export const ScheduleTimeline = ({ schedule, onMarkComplete }: ScheduleTimelineProps) => {
+const SortableTaskItem = ({ task, onMarkComplete }: SortableTaskItemProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`p-4 ${
+        task.isBreak 
+          ? "bg-muted/50 border-muted-foreground/30" 
+          : "bg-gradient-card border-border hover:shadow-glow"
+      } shadow-card transition-all duration-300 group ${
+        isDragging ? "opacity-50 cursor-grabbing" : "cursor-grab"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          {...attributes}
+          {...listeners}
+          className="mt-1 text-muted-foreground hover:text-primary transition-colors cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="w-5 h-5" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-2">
+            <span className={`font-mono text-sm font-medium ${task.isBreak ? "text-muted-foreground" : "text-primary"}`}>
+              {task.startTime} - {task.endTime}
+            </span>
+            {task.isBreak ? (
+              <Badge variant="outline" className="bg-muted/20 text-muted-foreground border-muted-foreground/30">
+                <Coffee className="w-3 h-3 mr-1" />
+                Break
+              </Badge>
+            ) : (
+              <>
+                <Badge variant="outline" className={getEnergyColor(task.energyLevel)}>
+                  <Zap className="w-3 h-3 mr-1" />
+                  {task.energyLevel}
+                </Badge>
+                <Badge variant="outline" className="border-border text-foreground">
+                  {getPriorityLabel(task.priority)}
+                </Badge>
+              </>
+            )}
+          </div>
+          <h3 className={`text-lg font-semibold ${
+            task.isBreak ? "text-muted-foreground" : "text-foreground group-hover:text-primary"
+          } transition-colors`}>
+            {task.title}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Duration: {task.duration} minutes
+          </p>
+        </div>
+        {!task.isBreak && onMarkComplete && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onMarkComplete(task)}
+            className="hover:bg-primary/10 hover:text-primary"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+export const ScheduleTimeline = ({ schedule, onMarkComplete, onReorder }: ScheduleTimelineProps) => {
   const { toast } = useToast();
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = schedule.findIndex((task) => task.id === active.id);
+      const newIndex = schedule.findIndex((task) => task.id === over.id);
+
+      const newSchedule = arrayMove(schedule, oldIndex, newIndex);
+      
+      // Recalculate times based on new order
+      const recalculatedSchedule = recalculateTimes(newSchedule);
+      
+      if (onReorder) {
+        onReorder(recalculatedSchedule);
+      }
+      
+      toast({
+        title: "Schedule reordered",
+        description: "Task times have been automatically adjusted",
+      });
+    }
+  };
+
+  const recalculateTimes = (tasks: ScheduledTask[]): ScheduledTask[] => {
+    if (tasks.length === 0) return tasks;
+    
+    const startTime = tasks[0].startTime;
+    let currentTime = parseTime(startTime);
+    
+    return tasks.map((task) => {
+      const start = formatTime(currentTime);
+      currentTime += task.duration;
+      const end = formatTime(currentTime);
+      
+      return {
+        ...task,
+        startTime: start,
+        endTime: end,
+      };
+    });
+  };
+
+  const parseTime = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const formatTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  };
 
   const handleExportCalendar = () => {
     downloadICalFile(schedule);
@@ -82,60 +232,26 @@ export const ScheduleTimeline = ({ schedule, onMarkComplete }: ScheduleTimelineP
         </div>
       </Card>
 
-      {schedule.map((task) => (
-        <Card
-          key={task.id}
-          className={`p-4 ${
-            task.isBreak 
-              ? "bg-muted/50 border-muted-foreground/30" 
-              : "bg-gradient-card border-border hover:shadow-glow"
-          } shadow-card transition-all duration-300 group`}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={schedule.map((task) => task.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <span className={`font-mono text-sm font-medium ${task.isBreak ? "text-muted-foreground" : "text-primary"}`}>
-                  {task.startTime} - {task.endTime}
-                </span>
-                {task.isBreak ? (
-                  <Badge variant="outline" className="bg-muted/20 text-muted-foreground border-muted-foreground/30">
-                    <Coffee className="w-3 h-3 mr-1" />
-                    Break
-                  </Badge>
-                ) : (
-                  <>
-                    <Badge variant="outline" className={getEnergyColor(task.energyLevel)}>
-                      <Zap className="w-3 h-3 mr-1" />
-                      {task.energyLevel}
-                    </Badge>
-                    <Badge variant="outline" className="border-border text-foreground">
-                      {getPriorityLabel(task.priority)}
-                    </Badge>
-                  </>
-                )}
-              </div>
-              <h3 className={`text-lg font-semibold ${
-                task.isBreak ? "text-muted-foreground" : "text-foreground group-hover:text-primary"
-              } transition-colors`}>
-                {task.title}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Duration: {task.duration} minutes
-              </p>
-            </div>
-            {!task.isBreak && onMarkComplete && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onMarkComplete(task)}
-                className="hover:bg-primary/10 hover:text-primary"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-              </Button>
-            )}
+          <div className="space-y-4">
+            {schedule.map((task) => (
+              <SortableTaskItem
+                key={task.id}
+                task={task}
+                onMarkComplete={onMarkComplete}
+              />
+            ))}
           </div>
-        </Card>
-      ))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 };
