@@ -278,8 +278,21 @@ const Index = () => {
       clearTimeout(pendingRemoval.timeoutId);
     }
 
-    // Remove from visible schedule immediately
-    setSchedule((prev) => prev.filter((t) => t.id !== task.id));
+    // Remove task and orphaned breaks from visible schedule immediately
+    setSchedule((prev) => {
+      const updatedSchedule = prev.filter((t) => t.id !== task.id);
+      
+      // Remove breaks that are now orphaned (no tasks before or after them)
+      return updatedSchedule.filter((item, index) => {
+        if (!item.isBreak) return true;
+        
+        const hasPreviousTask = index > 0 && !updatedSchedule[index - 1].isBreak;
+        const hasNextTask = index < updatedSchedule.length - 1 && !updatedSchedule[index + 1].isBreak;
+        
+        // Keep break only if it has tasks on both sides
+        return hasPreviousTask && hasNextTask;
+      });
+    });
 
     // Set up 5-second undo window
     const timeoutId = setTimeout(async () => {
