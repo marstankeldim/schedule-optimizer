@@ -33,6 +33,7 @@ const Index = () => {
   const [savedSchedules, setSavedSchedules] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<{ task: ScheduledTask; timeoutId: NodeJS.Timeout } | null>(null);
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
   const [recurringTasksKey, setRecurringTasksKey] = useState(0);
   const [dependencyDialogOpen, setDependencyDialogOpen] = useState(false);
   const [selectedTaskForDependency, setSelectedTaskForDependency] = useState<Task | null>(null);
@@ -204,6 +205,7 @@ const Index = () => {
       if (error) throw error;
 
       setSchedule(data.schedule);
+      setCompletedTaskIds(new Set()); // Reset completed tasks for new schedule
       toast({
         title: "Schedule optimized!",
         description: "Your tasks have been arranged for optimal productivity",
@@ -255,6 +257,7 @@ const Index = () => {
 
   const handleLoadSchedule = (savedSchedule: any) => {
     setSchedule(savedSchedule.schedule_data);
+    setCompletedTaskIds(new Set()); // Reset completed tasks for loaded schedule
     setStartTime(savedSchedule.start_time);
     setBreakPreference(savedSchedule.break_preference);
     setShowHistory(false);
@@ -284,19 +287,34 @@ const Index = () => {
       clearTimeout(pendingRemoval.timeoutId);
     }
 
-    // Remove task and orphaned breaks from visible schedule immediately
+    // Add to completed tasks set
+    setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+
+    // Remove task from visible schedule immediately
     setSchedule((prev) => {
       const updatedSchedule = prev.filter((t) => t.id !== task.id);
       
-      // Remove breaks that are now orphaned (no tasks before or after them)
+      // Get the current set of completed task IDs (including the one just completed)
+      const currentCompletedIds = new Set([...completedTaskIds, task.id]);
+      
+      // Remove breaks only when BOTH adjacent tasks are completed
       const finalSchedule = updatedSchedule.filter((item, index) => {
         if (!item.isBreak) return true;
         
-        const hasPreviousTask = index > 0 && !updatedSchedule[index - 1].isBreak;
-        const hasNextTask = index < updatedSchedule.length - 1 && !updatedSchedule[index + 1].isBreak;
+        // Find the break's position in the original schedule
+        const originalIndex = schedule.findIndex((t) => t.id === item.id);
+        if (originalIndex === -1) return true;
         
-        // Keep break only if it has tasks on both sides
-        return hasPreviousTask && hasNextTask;
+        // Get the original adjacent tasks
+        const originalPrevTask = schedule[originalIndex - 1];
+        const originalNextTask = schedule[originalIndex + 1];
+        
+        // Check if both original adjacent tasks are completed
+        const prevTaskCompleted = !originalPrevTask || originalPrevTask.isBreak || currentCompletedIds.has(originalPrevTask.id);
+        const nextTaskCompleted = !originalNextTask || originalNextTask.isBreak || currentCompletedIds.has(originalNextTask.id);
+        
+        // Keep break unless BOTH adjacent tasks are completed
+        return !(prevTaskCompleted && nextTaskCompleted);
       });
 
       // Update daily completion tracking
