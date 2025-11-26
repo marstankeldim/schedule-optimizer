@@ -15,8 +15,10 @@ import { TaskHistory } from "@/components/TaskHistory";
 import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
+import { useStreakTracking } from "@/hooks/useStreakTracking";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { StreakTracker } from "@/components/StreakTracker";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -35,6 +37,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
+  const { currentStreak, longestStreak, loading: streakLoading, updateDailyCompletion } = useStreakTracking(session?.user?.id);
 
   useEffect(() => {
     // Set up auth state listener
@@ -283,7 +286,7 @@ const Index = () => {
       const updatedSchedule = prev.filter((t) => t.id !== task.id);
       
       // Remove breaks that are now orphaned (no tasks before or after them)
-      return updatedSchedule.filter((item, index) => {
+      const finalSchedule = updatedSchedule.filter((item, index) => {
         if (!item.isBreak) return true;
         
         const hasPreviousTask = index > 0 && !updatedSchedule[index - 1].isBreak;
@@ -292,6 +295,13 @@ const Index = () => {
         // Keep break only if it has tasks on both sides
         return hasPreviousTask && hasNextTask;
       });
+
+      // Update daily completion tracking
+      const nonBreakTasks = schedule.filter(t => !t.isBreak);
+      const completedTasks = nonBreakTasks.length - finalSchedule.filter(t => !t.isBreak).length;
+      updateDailyCompletion(completedTasks, nonBreakTasks.length);
+
+      return finalSchedule;
     });
 
     // Set up 5-second undo window
@@ -371,6 +381,92 @@ const Index = () => {
       title: "Logged out",
       description: "You've been successfully logged out",
     });
+  };
+
+  const handleRescheduleToTomorrow = async () => {
+    if (!session?.user || schedule.length === 0) return;
+
+    // Get incomplete tasks (exclude breaks)
+    const incompleteTasks = schedule.filter((t) => !t.isBreak);
+    
+    if (incompleteTasks.length === 0) {
+      toast({
+        title: "No tasks to reschedule",
+        description: "All tasks have been completed!",
+      });
+      return;
+    }
+
+    // Add incomplete tasks back to the task list
+    const tasksToAdd = incompleteTasks.map((t) => ({
+      user_id: session.user.id,
+      title: t.title,
+      duration: t.duration,
+      energy_level: t.energyLevel,
+      priority: t.priority,
+    }));
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert(tasksToAdd)
+      .select();
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to reschedule tasks",
+        variant: "destructive",
+      });
+    } else {
+      const addedTasks: Task[] = data.map((d) => ({
+        id: d.id,
+        title: d.title,
+        duration: d.duration,
+        energyLevel: d.energy_level as "high" | "medium" | "low",
+        priority: d.priority as "high" | "medium" | "low",
+      }));
+
+      // Copy dependencies for rescheduled tasks
+      for (let i = 0; i < incompleteTasks.length; i++) {
+        const oldTaskId = incompleteTasks[i].id;
+        const newTaskId = addedTasks[i].id;
+
+        // Get dependencies of the old task
+        const { data: deps } = await supabase
+          .from("task_dependencies")
+          .select("depends_on_task_id")
+          .eq("task_id", oldTaskId)
+          .eq("user_id", session.user.id);
+
+        // Map old dependency IDs to new ones
+        if (deps && deps.length > 0) {
+          const dependencyMappings = incompleteTasks.reduce((acc, task, idx) => {
+            acc[task.id] = addedTasks[idx].id;
+            return acc;
+          }, {} as Record<string, string>);
+
+          const newDeps = deps
+            .map((dep) => ({
+              user_id: session.user.id,
+              task_id: newTaskId,
+              depends_on_task_id: dependencyMappings[dep.depends_on_task_id] || dep.depends_on_task_id,
+            }))
+            .filter((dep) => dep.depends_on_task_id); // Only keep if dependency still exists
+
+          if (newDeps.length > 0) {
+            await supabase.from("task_dependencies").insert(newDeps);
+          }
+        }
+      }
+
+      setTasks([...tasks, ...addedTasks]);
+      setSchedule([]);
+      
+      toast({
+        title: "Tasks rescheduled",
+        description: `${incompleteTasks.length} task(s) added to your task list for tomorrow`,
+      });
+    }
   };
 
   if (!session) {
@@ -584,8 +680,17 @@ const Index = () => {
             )}
           </div>
 
-          {/* Right Column - Goals Only (schedule will move to fullscreen when generated) */}
+          {/* Right Column - Goals and Streak */}
           <div className="space-y-6">
+            {/* Streak Tracker */}
+            {session?.user && (
+              <StreakTracker
+                currentStreak={currentStreak}
+                longestStreak={longestStreak}
+                loading={streakLoading}
+              />
+            )}
+            
             {/* Goals Sidebar */}
             {session?.user && (
               <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
@@ -594,15 +699,32 @@ const Index = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Goals Section at Top */}
-          {session?.user && (
-            <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
-          )}
+          {/* Goals and Streak Section at Top */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {session?.user && (
+              <>
+                <StreakTracker
+                  currentStreak={currentStreak}
+                  longestStreak={longestStreak}
+                  loading={streakLoading}
+                />
+                <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
+              </>
+            )}
+          </div>
 
           {/* Fullscreen Schedule */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-semibold text-foreground">Your Optimized Schedule</h2>
             <div className="flex gap-2">
+              <Button
+                onClick={handleRescheduleToTomorrow}
+                variant="outline"
+                className="bg-secondary hover:bg-secondary/80 border-border"
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Reschedule to Tomorrow
+              </Button>
               <Button
                 onClick={() => setSchedule([])}
                 variant="outline"
