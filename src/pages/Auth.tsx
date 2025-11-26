@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Loader2 } from "lucide-react";
+import { Calendar, Loader2, Sparkles } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
+import { populateDemoData } from "@/lib/demoData";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -39,6 +40,40 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const handleDemoMode = async () => {
+    setIsLoading(true);
+    try {
+      // Create a demo account with a unique email
+      const demoEmail = `demo_${Date.now()}@demo.local`;
+      const demoPassword = `demo_${Date.now()}`;
+
+      const { data, error } = await supabase.auth.signUp({
+        email: demoEmail,
+        password: demoPassword,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Populate demo data
+        await populateDemoData(data.user.id);
+        
+        toast({
+          title: "Demo Mode Activated!",
+          description: "Sample data has been loaded. Explore all features!",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to activate demo mode",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,6 +258,30 @@ const Auth = () => {
             </button>
           </div>
         </Card>
+
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleDemoMode}
+            disabled={isLoading}
+            variant="outline"
+            className="w-full mt-6 border-primary/20 bg-primary/5 hover:bg-primary/10 text-foreground"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Try Demo Mode
+          </Button>
+          <p className="text-xs text-center text-muted-foreground mt-2">
+            Explore all features with pre-loaded sample data
+          </p>
+        </div>
       </div>
     </div>
   );
