@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_completions: {
+        Row: {
+          all_completed: boolean
+          completion_date: string
+          created_at: string
+          id: string
+          tasks_completed: number
+          total_tasks: number
+          user_id: string
+        }
+        Insert: {
+          all_completed?: boolean
+          completion_date: string
+          created_at?: string
+          id?: string
+          tasks_completed?: number
+          total_tasks?: number
+          user_id: string
+        }
+        Update: {
+          all_completed?: boolean
+          completion_date?: string
+          created_at?: string
+          id?: string
+          tasks_completed?: number
+          total_tasks?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       goal_achievements: {
         Row: {
           achieved_at: string
