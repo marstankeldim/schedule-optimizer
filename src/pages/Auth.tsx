@@ -259,7 +259,7 @@ const Auth = () => {
           </div>
         </Card>
 
-        <div className="mt-6">
+        <div className="mt-8">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border"></div>
@@ -269,18 +269,27 @@ const Auth = () => {
             </div>
           </div>
 
-          <Button
-            onClick={handleDemoMode}
-            disabled={isLoading}
-            variant="outline"
-            className="w-full mt-6 border-primary/20 bg-primary/5 hover:bg-primary/10 text-foreground"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Try Demo Mode
-          </Button>
-          <p className="text-xs text-center text-muted-foreground mt-2">
-            Explore all features with pre-loaded sample data
-          </p>
+          <div className="mt-6 relative overflow-hidden rounded-lg bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 p-1">
+            <Button
+              onClick={handleDemoMode}
+              disabled={isLoading}
+              size="lg"
+              className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground font-semibold text-lg shadow-glow"
+            >
+              <Sparkles className="w-5 h-5 mr-2 animate-pulse" />
+              Try Demo Mode
+              <Sparkles className="w-5 h-5 ml-2 animate-pulse" />
+            </Button>
+          </div>
+          
+          <div className="mt-3 text-center space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              🚀 Perfect for hackathon demos!
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Pre-loaded with tasks, recurring tasks, achievements, streaks & calendar events
+            </p>
+          </div>
         </div>
       </div>
     </div>
