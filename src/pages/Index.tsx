@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskInput, Task } from "@/components/TaskInput";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
-import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2 } from "lucide-react";
+import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
@@ -276,6 +276,14 @@ const Index = () => {
               <Calendar className="w-8 h-8 text-primary" />
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/dashboard")}
+                className="bg-secondary hover:bg-secondary/80 border-border"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Analytics
+              </Button>
               {savedSchedules.length > 0 && (
                 <Button
                   variant="outline"
