@@ -14,7 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      completed_tasks: {
+        Row: {
+          completed_at: string
+          energy_level: string
+          id: string
+          priority: string
+          task_duration: number
+          task_title: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          energy_level: string
+          id?: string
+          priority: string
+          task_duration: number
+          task_title: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          energy_level?: string
+          id?: string
+          priority?: string
+          task_duration?: number
+          task_title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      schedules: {
+        Row: {
+          break_preference: string
+          created_at: string
+          id: string
+          name: string
+          schedule_data: Json
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          break_preference: string
+          created_at?: string
+          id?: string
+          name: string
+          schedule_data: Json
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          break_preference?: string
+          created_at?: string
+          id?: string
+          name?: string
+          schedule_data?: Json
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          duration: number
+          energy_level: string
+          id: string
+          priority: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration: number
+          energy_level: string
+          id?: string
+          priority: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number
+          energy_level?: string
+          id?: string
+          priority?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
