@@ -97,8 +97,20 @@ Return ONLY a valid JSON object with this exact structure (no additional text):
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    let aiResponse = data.choices[0].message.content;
     console.log("AI response:", aiResponse);
+
+    // Strip markdown code blocks if present
+    aiResponse = aiResponse.trim();
+    if (aiResponse.startsWith("```json")) {
+      aiResponse = aiResponse.slice(7); // Remove ```json
+    } else if (aiResponse.startsWith("```")) {
+      aiResponse = aiResponse.slice(3); // Remove ```
+    }
+    if (aiResponse.endsWith("```")) {
+      aiResponse = aiResponse.slice(0, -3); // Remove trailing ```
+    }
+    aiResponse = aiResponse.trim();
 
     // Parse the AI response
     const scheduleData = JSON.parse(aiResponse);
