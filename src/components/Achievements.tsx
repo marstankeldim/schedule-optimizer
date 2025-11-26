@@ -76,7 +76,7 @@ export const Achievements = ({ userId, currentStreak }: AchievementsProps) => {
       </div>
 
       {/* Tab Content */}
-      <div className="space-y-3">
+      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
         {activeTab === "unlocked" && (
           unlocked.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

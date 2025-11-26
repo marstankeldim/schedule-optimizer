@@ -20,10 +20,11 @@ interface RecurringTask {
   energy_level: string;
   priority: string;
   recurrence_type: "daily" | "weekly" | "monthly" | "custom";
-  recurrence_pattern: any; // Using any to match Supabase Json type
+  recurrence_pattern: any;
   is_active: boolean;
   start_date: string;
   end_date?: string;
+  preferred_time?: string;
 }
 
 interface RecurringTasksProps {
@@ -46,6 +47,7 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
   const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly">("daily");
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Weekdays by default
   const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [preferredTime, setPreferredTime] = useState("09:00");
 
   useEffect(() => {
     loadRecurringTasks();
@@ -122,6 +124,7 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
       priority,
       recurrence_type: recurrenceType,
       recurrence_pattern: recurrencePattern,
+      preferred_time: preferredTime,
     });
 
     if (error) {
@@ -143,6 +146,7 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
       setRecurrenceType("daily");
       setSelectedDays([1, 2, 3, 4, 5]);
       setDayOfMonth(1);
+      setPreferredTime("09:00");
       setIsOpen(false);
       loadRecurringTasks();
     }
@@ -354,6 +358,20 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
                       <SelectItem value="low">Low Priority</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="preferredTime">Preferred Time</Label>
+                  <Input
+                    id="preferredTime"
+                    type="time"
+                    value={preferredTime}
+                    onChange={(e) => setPreferredTime(e.target.value)}
+                    className="mt-1.5 bg-secondary border-border"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Preferred time to schedule this task
+                  </p>
                 </div>
 
                 <div>
