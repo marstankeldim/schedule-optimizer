@@ -1,3 +1,6 @@
+Do tasks more efficient than others using Schedule Optimizer by Ayan Ospan
+
+
 # Welcome to your Lovable project
 
 ## Project info
