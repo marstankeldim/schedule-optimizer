@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TaskInput, Task } from "@/components/TaskInput";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
+import { TaskHistory } from "@/components/TaskHistory";
 import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
@@ -24,6 +25,7 @@ const Index = () => {
   const [scheduleName, setScheduleName] = useState("");
   const [savedSchedules, setSavedSchedules] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<{ task: ScheduledTask; timeoutId: NodeJS.Timeout } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
@@ -212,33 +214,74 @@ const Index = () => {
     });
   };
 
+  const handleUndoRemoval = () => {
+    if (pendingRemoval) {
+      clearTimeout(pendingRemoval.timeoutId);
+      setSchedule((prev) => [...prev, pendingRemoval.task]);
+      setPendingRemoval(null);
+      toast({
+        title: "Task restored",
+        description: "Task completion cancelled",
+      });
+    }
+  };
+
   const handleMarkTaskComplete = async (task: ScheduledTask) => {
     if (!session?.user || task.isBreak) return;
 
-    const { error } = await supabase.from("completed_tasks").insert({
-      user_id: session.user.id,
-      task_title: task.title,
-      task_duration: task.duration,
-      energy_level: task.energyLevel,
-      priority: task.priority,
-    });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to mark task as complete",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Task completed!",
-        description: `"${task.title}" has been marked as complete`,
-      });
-      // Check and update goals after task completion
-      setTimeout(() => {
-        checkAndUpdateGoals();
-      }, 100);
+    // Clear any existing pending removal
+    if (pendingRemoval) {
+      clearTimeout(pendingRemoval.timeoutId);
     }
+
+    // Remove from visible schedule immediately
+    setSchedule((prev) => prev.filter((t) => t.id !== task.id));
+
+    // Set up 5-second undo window
+    const timeoutId = setTimeout(async () => {
+      // Actually complete the task after 5 seconds
+      const { error } = await supabase.from("completed_tasks").insert({
+        user_id: session.user.id,
+        task_title: task.title,
+        task_duration: task.duration,
+        energy_level: task.energyLevel,
+        priority: task.priority,
+      });
+
+      if (error) {
+        console.error("Error saving completed task:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save completed task",
+          variant: "destructive",
+        });
+      } else {
+        setPendingRemoval(null);
+
+        // Check and update goals after completing a task
+        if (session?.user?.id) {
+          await checkAndUpdateGoals();
+        }
+      }
+    }, 5000);
+
+    // Set pending removal state
+    setPendingRemoval({ task, timeoutId });
+
+    // Show undo toast
+    toast({
+      title: "Task Completed!",
+      description: "Click undo within 5 seconds to cancel.",
+      action: (
+        <button
+          onClick={handleUndoRemoval}
+          className="px-3 py-1 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Undo
+        </button>
+      ),
+      duration: 5000,
+    });
   };
 
   const handleClearTasks = async () => {
@@ -485,6 +528,13 @@ const Index = () => {
             )}
           </div>
         </div>
+
+        {/* Task History Section */}
+        {session && (
+          <div className="mt-8">
+            <TaskHistory userId={session.user.id} />
+          </div>
+        )}
       </div>
     </div>
   );
