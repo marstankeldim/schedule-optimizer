@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Repeat, Plus, Trash2, Calendar, Clock, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +37,15 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
+
+  // Form state
+  const [title, setTitle] = useState("");
+  const [duration, setDuration] = useState(30);
+  const [energyLevel, setEnergyLevel] = useState<"high" | "medium" | "low">("medium");
+  const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
+  const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Weekdays by default
+  const [dayOfMonth, setDayOfMonth] = useState(1);
 
   useEffect(() => {
     loadRecurringTasks();
@@ -71,6 +83,75 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
         title: isActive ? "Recurring task enabled" : "Recurring task disabled",
       });
     }
+  };
+
+  const createRecurringTask = async () => {
+    if (!title.trim()) {
+      toast({
+        title: "Title required",
+        description: "Please enter a task title",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (recurrenceType === "weekly" && selectedDays.length === 0) {
+      toast({
+        title: "Select days",
+        description: "Please select at least one day for weekly recurrence",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let recurrencePattern = {};
+    switch (recurrenceType) {
+      case "weekly":
+        recurrencePattern = { daysOfWeek: selectedDays };
+        break;
+      case "monthly":
+        recurrencePattern = { dayOfMonth };
+        break;
+    }
+
+    const { error } = await supabase.from("recurring_tasks").insert({
+      user_id: userId,
+      title: title.trim(),
+      duration,
+      energy_level: energyLevel,
+      priority,
+      recurrence_type: recurrenceType,
+      recurrence_pattern: recurrencePattern,
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create recurring task",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Recurring task created!",
+        description: `"${title}" will repeat ${recurrenceType}`,
+      });
+      // Reset form
+      setTitle("");
+      setDuration(30);
+      setEnergyLevel("medium");
+      setPriority("medium");
+      setRecurrenceType("daily");
+      setSelectedDays([1, 2, 3, 4, 5]);
+      setDayOfMonth(1);
+      setIsOpen(false);
+      loadRecurringTasks();
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
+    );
   };
 
   const deleteRecurringTask = async (taskId: string) => {
@@ -217,13 +298,133 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
                 New Recurring Task
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-card border-border max-w-md">
+            <DialogContent className="bg-card border-border max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create Recurring Task</DialogTitle>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                Create recurring tasks from the task input above or from templates. Set them as recurring after adding them.
-              </p>
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label htmlFor="title">Task Title</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Morning standup"
+                    className="mt-1.5 bg-secondary border-border"
+                    maxLength={200}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="duration">Duration (minutes)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    min={5}
+                    max={480}
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value) || 30)}
+                    className="mt-1.5 bg-secondary border-border"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="energyLevel">Energy Level</Label>
+                  <Select value={energyLevel} onValueChange={(v: any) => setEnergyLevel(v)}>
+                    <SelectTrigger id="energyLevel" className="mt-1.5 bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High Energy</SelectItem>
+                      <SelectItem value="medium">Medium Energy</SelectItem>
+                      <SelectItem value="low">Low Energy</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="priority">Priority</Label>
+                  <Select value={priority} onValueChange={(v: any) => setPriority(v)}>
+                    <SelectTrigger id="priority" className="mt-1.5 bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High Priority</SelectItem>
+                      <SelectItem value="medium">Medium Priority</SelectItem>
+                      <SelectItem value="low">Low Priority</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="recurrenceType">Recurrence Pattern</Label>
+                  <Select
+                    value={recurrenceType}
+                    onValueChange={(v: any) => setRecurrenceType(v)}
+                  >
+                    <SelectTrigger id="recurrenceType" className="mt-1.5 bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly (Select Days)</SelectItem>
+                      <SelectItem value="monthly">Monthly (Specific Day)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {recurrenceType === "weekly" && (
+                  <div>
+                    <Label className="mb-2 block">Select Days</Label>
+                    <div className="grid grid-cols-7 gap-2">
+                      {DAYS_OF_WEEK.map((day, index) => (
+                        <div key={day} className="flex flex-col items-center">
+                          <Checkbox
+                            id={`day-${index}`}
+                            checked={selectedDays.includes(index)}
+                            onCheckedChange={() => toggleDay(index)}
+                            className="mb-1"
+                          />
+                          <Label
+                            htmlFor={`day-${index}`}
+                            className="text-xs cursor-pointer"
+                          >
+                            {day}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {recurrenceType === "monthly" && (
+                  <div>
+                    <Label htmlFor="dayOfMonth">Day of Month</Label>
+                    <Select
+                      value={dayOfMonth.toString()}
+                      onValueChange={(v) => setDayOfMonth(parseInt(v))}
+                    >
+                      <SelectTrigger id="dayOfMonth" className="mt-1.5 bg-secondary border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                          <SelectItem key={day} value={day.toString()}>
+                            Day {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <Button
+                  onClick={createRecurringTask}
+                  className="w-full bg-primary hover:bg-primary/90"
+                >
+                  Create Recurring Task
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
