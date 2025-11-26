@@ -17,11 +17,12 @@ import { CalendarImport } from "@/components/CalendarImport";
 import { FocusMode } from "@/components/FocusMode";
 import { AIInsights } from "@/components/AIInsights";
 import { SchedulePreferences } from "@/components/SchedulePreferences";
-import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch, Focus } from "lucide-react";
+import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch, Focus, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
 import { useStreakTracking } from "@/hooks/useStreakTracking";
 import { useAchievements } from "@/hooks/useAchievements";
+import { useBreakNotifications } from "@/hooks/useBreakNotifications";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { StreakTracker } from "@/components/StreakTracker";
@@ -51,6 +52,7 @@ const Index = () => {
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
   const { currentStreak, longestStreak, loading: streakLoading, updateDailyCompletion } = useStreakTracking(session?.user?.id);
   const { checkTaskCompletionAchievements, checkSpeedDemon, checkStreakAchievements } = useAchievements(session?.user?.id);
+  const { scheduleBreakNotifications, notificationsEnabled, checkPermissions } = useBreakNotifications(session?.user?.id);
 
   useEffect(() => {
     // Set up auth state listener
@@ -248,17 +250,39 @@ const Index = () => {
       if (planningPeriod === "week") {
         setWeeklySchedule(data.weeklySchedule);
         setSchedule([]); // Clear daily schedule
+        
+        // Schedule notifications for each day's breaks
+        if (notificationsEnabled) {
+          const today = new Date();
+          Object.entries(data.weeklySchedule).forEach(([day, daySchedule], index) => {
+            const scheduleDate = new Date(today);
+            scheduleDate.setDate(today.getDate() + index);
+            scheduleBreakNotifications(daySchedule as ScheduledTask[], scheduleDate);
+          });
+        }
       } else {
         setSchedule(data.schedule);
         setWeeklySchedule({}); // Clear weekly schedule
+        
+        // Schedule notifications for tomorrow's breaks
+        if (notificationsEnabled) {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          scheduleBreakNotifications(data.schedule, tomorrow);
+        }
       }
       
       setCompletedTaskIds(new Set()); // Reset completed tasks for new schedule
+      
+      const notifMessage = notificationsEnabled 
+        ? "Break notifications have been scheduled!"
+        : "Enable notifications to get break reminders";
+      
       toast({
         title: "Schedule optimized!",
         description: planningPeriod === "week" 
-          ? "Your tasks have been distributed across the week"
-          : "Your tasks have been arranged for optimal productivity",
+          ? `Your tasks have been distributed across the week. ${notifMessage}`
+          : `Your tasks have been arranged for optimal productivity. ${notifMessage}`,
       });
     } catch (error) {
       console.error("Error optimizing schedule:", error);
@@ -343,7 +367,46 @@ const Index = () => {
   };
 
   const handleMarkTaskComplete = async (task: ScheduledTask) => {
-    if (!session?.user || task.isBreak) return;
+    if (!session?.user) return;
+    
+    // Handle break completion separately
+    if (task.isBreak) {
+      setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+      
+      // Track break adherence
+      const [hours, minutes] = task.startTime.split(':').map(Number);
+      const today = new Date();
+      const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
+      
+      let breakType = "regular";
+      if (task.title.toLowerCase().includes('hydration') || task.title.includes('💧')) {
+        breakType = "hydration";
+      } else if (task.title.toLowerCase().includes('breakfast') || 
+                 task.title.toLowerCase().includes('lunch') || 
+                 task.title.toLowerCase().includes('dinner')) {
+        breakType = "meal";
+      }
+      
+      await supabase.from("break_adherence").upsert({
+        user_id: session.user.id,
+        break_type: breakType,
+        break_title: task.title,
+        scheduled_time: scheduledTime.toISOString(),
+        taken: true,
+        taken_at: new Date().toISOString(),
+        duration_minutes: task.duration,
+        date: today.toISOString().split('T')[0]
+      }, {
+        onConflict: 'user_id,break_title,scheduled_time'
+      });
+      
+      toast({
+        title: "Break completed!",
+        description: `"${task.title}" marked as taken`,
+      });
+      
+      return;
+    }
 
     // Clear any existing pending removal
     if (pendingRemoval) {
@@ -567,6 +630,16 @@ const Index = () => {
                 >
                   <History className="w-4 h-4 mr-2" />
                   History ({savedSchedules.length})
+                </Button>
+              )}
+              {!notificationsEnabled && (
+                <Button
+                  variant="outline"
+                  onClick={checkPermissions}
+                  className="bg-accent/10 hover:bg-accent/20 border-accent/30"
+                >
+                  <Bell className="w-4 h-4 mr-2" />
+                  Enable Break Alerts
                 </Button>
               )}
               <Button
@@ -923,7 +996,36 @@ const Index = () => {
                 // Update completed task IDs
                 setCompletedTaskIds((prev) => new Set([...prev, task.id]));
 
-                // Handle completion tracking
+                // Handle break completion tracking
+                if (task.isBreak && session?.user) {
+                  const [hours, minutes] = task.startTime.split(':').map(Number);
+                  const today = new Date();
+                  const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
+                  
+                  let breakType = "regular";
+                  if (task.title.toLowerCase().includes('hydration') || task.title.includes('💧')) {
+                    breakType = "hydration";
+                  } else if (task.title.toLowerCase().includes('breakfast') || 
+                             task.title.toLowerCase().includes('lunch') || 
+                             task.title.toLowerCase().includes('dinner')) {
+                    breakType = "meal";
+                  }
+                  
+                  supabase.from("break_adherence").upsert({
+                    user_id: session.user.id,
+                    break_type: breakType,
+                    break_title: task.title,
+                    scheduled_time: scheduledTime.toISOString(),
+                    taken: true,
+                    taken_at: new Date().toISOString(),
+                    duration_minutes: task.duration,
+                    date: today.toISOString().split('T')[0]
+                  }, {
+                    onConflict: 'user_id,break_title,scheduled_time'
+                  });
+                }
+
+                // Handle task completion tracking
                 if (!task.isBreak && session?.user) {
                   supabase.from("completed_tasks").insert({
                     user_id: session.user.id,
