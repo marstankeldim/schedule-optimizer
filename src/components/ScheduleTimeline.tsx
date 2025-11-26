@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Zap, Download, Calendar, Coffee } from "lucide-react";
+import { Clock, Zap, Download, Calendar, Coffee, CheckCircle2 } from "lucide-react";
 import type { Task } from "./TaskInput";
 import { downloadICalFile } from "@/lib/icalGenerator";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ export interface ScheduledTask extends Task {
 
 interface ScheduleTimelineProps {
   schedule: ScheduledTask[];
+  onMarkComplete?: (task: ScheduledTask) => void;
 }
 
 const getEnergyColor = (level: Task["energyLevel"]) => {
@@ -38,7 +39,7 @@ const getPriorityLabel = (priority: Task["priority"]) => {
   }
 };
 
-export const ScheduleTimeline = ({ schedule }: ScheduleTimelineProps) => {
+export const ScheduleTimeline = ({ schedule, onMarkComplete }: ScheduleTimelineProps) => {
   const { toast } = useToast();
 
   const handleExportCalendar = () => {
@@ -122,6 +123,16 @@ export const ScheduleTimeline = ({ schedule }: ScheduleTimelineProps) => {
                 Duration: {task.duration} minutes
               </p>
             </div>
+            {!task.isBreak && onMarkComplete && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onMarkComplete(task)}
+                className="hover:bg-primary/10 hover:text-primary"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </Card>
       ))}
