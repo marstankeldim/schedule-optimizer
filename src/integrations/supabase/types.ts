@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_events: {
+        Row: {
+          all_day: boolean | null
+          created_at: string | null
+          end_time: string
+          id: string
+          start_time: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          all_day?: boolean | null
+          created_at?: string | null
+          end_time: string
+          id?: string
+          start_time: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          all_day?: boolean | null
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          start_time?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       completed_tasks: {
         Row: {
           completed_at: string

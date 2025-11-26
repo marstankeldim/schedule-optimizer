@@ -12,6 +12,7 @@ import { TaskDependencies } from "@/components/TaskDependencies";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
+import { CalendarImport } from "@/components/CalendarImport";
 import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
@@ -199,7 +200,12 @@ const Index = () => {
     setIsOptimizing(true);
     try {
       const { data, error } = await supabase.functions.invoke("optimize-schedule", {
-        body: { tasks, startTime, breakPreference },
+        body: { 
+          tasks, 
+          startTime, 
+          breakPreference,
+          userId: session?.user?.id,
+        },
       });
 
       if (error) throw error;
@@ -611,6 +617,20 @@ const Index = () => {
                 key={recurringTasksKey}
                 userId={session.user.id}
                 onGenerateTasks={handleAddMultipleTasks}
+              />
+            )}
+
+            {/* Calendar Import */}
+            {session?.user && (
+              <CalendarImport
+                userId={session.user.id}
+                onEventsImported={() => {
+                  // Refresh calendar events when imported
+                  toast({
+                    title: "Calendar updated",
+                    description: "Your schedule optimization will now consider your calendar events",
+                  });
+                }}
               />
             )}
 
