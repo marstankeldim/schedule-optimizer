@@ -188,18 +188,23 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
   };
 
   return (
-    <Card className="p-6 bg-gradient-card border-border shadow-card">
+    <Card className="p-6 bg-gradient-card border-border shadow-card ring-2 ring-primary/20">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Repeat className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Recurring Tasks</h3>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/20 rounded-lg">
+            <Repeat className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Recurring Tasks</h3>
+            <p className="text-xs text-muted-foreground">Create tasks that repeat automatically</p>
+          </div>
         </div>
         <div className="flex gap-2">
           {recurringTasks.length > 0 && (
             <Button
-              size="sm"
+              size="default"
               onClick={generateTasksForToday}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 shadow-glow font-semibold"
             >
               <Calendar className="w-4 h-4 mr-2" />
               Add Today's Tasks
@@ -207,8 +212,9 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
           )}
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="bg-secondary border-border">
-                <Plus className="w-4 h-4" />
+              <Button size="default" className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold">
+                <Plus className="w-4 h-4 mr-2" />
+                New Recurring Task
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-card border-border max-w-md">
@@ -224,12 +230,21 @@ export const RecurringTasks = ({ userId, onGenerateTasks }: RecurringTasksProps)
       </div>
 
       {recurringTasks.length === 0 ? (
-        <div className="text-center py-8">
-          <Repeat className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-          <p className="text-sm text-muted-foreground">No recurring tasks yet</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Create tasks that automatically repeat on your schedule
+        <div className="text-center py-10 px-4 bg-primary/5 rounded-lg border border-primary/20">
+          <div className="inline-flex p-4 bg-primary/10 rounded-full mb-4">
+            <Repeat className="w-12 h-12 text-primary" />
+          </div>
+          <p className="text-lg font-semibold text-foreground mb-2">No recurring tasks yet</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Set up tasks that repeat daily, weekly, or monthly - they'll automatically appear in your schedule!
           </p>
+          <Button
+            onClick={() => setIsOpen(true)}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground font-semibold"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Your First Recurring Task
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
