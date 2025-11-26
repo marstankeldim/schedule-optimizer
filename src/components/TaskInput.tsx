@@ -13,6 +13,7 @@ export interface Task {
   duration: number;
   energyLevel: "high" | "medium" | "low";
   priority: "high" | "medium" | "low";
+  recurringTaskId?: string;
 }
 
 interface TaskInputProps {
