@@ -31,6 +31,7 @@ import { StreakTracker } from "@/components/StreakTracker";
 import { Achievements } from "@/components/Achievements";
 import { MentalHealthRewards } from "@/components/MentalHealthRewards";
 import { CompletionCelebration } from "@/components/CompletionCelebration";
+import { PlanMyDay } from "@/components/PlanMyDay";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -844,6 +845,16 @@ const Index = () => {
                     title: "Calendar updated",
                     description: "Your schedule optimization will now consider your calendar events",
                   });
+                }}
+              />
+            )}
+
+            {/* Plan My Day */}
+            {session?.user && (
+              <PlanMyDay
+                userId={session.user.id}
+                onTasksGenerated={(newTasks) => {
+                  setTasks(prev => [...prev, ...newTasks]);
                 }}
               />
             )}

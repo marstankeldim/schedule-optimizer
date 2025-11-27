@@ -24,7 +24,7 @@ interface ProductivityInsight {
 }
 
 interface SmartRecommendation {
-  category: string;
+  category: "time_management" | "energy_optimization" | "break_scheduling";
   title: string;
   description: string;
   priority: string;
@@ -40,6 +40,8 @@ export const AIInsights = ({ userId }: AIInsightsProps) => {
   const [flowPredictions, setFlowPredictions] = useState<FlowPrediction[]>([]);
   const [insights, setInsights] = useState<ProductivityInsight[]>([]);
   const [recommendations, setRecommendations] = useState<SmartRecommendation[]>([]);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [appliedRecommendations, setAppliedRecommendations] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const fetchAnalytics = async (type: string, setState: (data: any[]) => void) => {
@@ -75,7 +77,54 @@ export const AIInsights = ({ userId }: AIInsightsProps) => {
     fetchAnalytics('flow_predictions', setFlowPredictions);
     fetchAnalytics('productivity_insights', setInsights);
     fetchAnalytics('smart_recommendations', setRecommendations);
+    loadAppliedRecommendations();
   }, [userId]);
+
+  const loadAppliedRecommendations = async () => {
+    try {
+      const { data } = await supabase
+        .from('recommendation_applications')
+        .select('recommendation_title')
+        .eq('user_id', userId);
+      
+      if (data) {
+        setAppliedRecommendations(new Set(data.map(r => r.recommendation_title)));
+      }
+    } catch (error) {
+      console.error('Error loading applied recommendations:', error);
+    }
+  };
+
+  const handleApplyRecommendation = async (rec: SmartRecommendation) => {
+    try {
+      const { error } = await supabase
+        .from('recommendation_applications')
+        .insert({
+          user_id: userId,
+          recommendation_title: rec.title,
+          recommendation_category: rec.category,
+        });
+
+      if (error) throw error;
+
+      setAppliedRecommendations(prev => new Set([...prev, rec.title]));
+      toast({
+        title: "Recommendation Applied",
+        description: `"${rec.title}" has been tracked. Keep it up!`,
+      });
+    } catch (error) {
+      console.error('Error applying recommendation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to track recommendation",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredRecommendations = categoryFilter === "all"
+    ? recommendations
+    : recommendations.filter(r => r.category === categoryFilter);
 
   const getImpactColor = (impact: string) => {
     switch (impact.toLowerCase()) {
@@ -197,38 +246,75 @@ export const AIInsights = ({ userId }: AIInsightsProps) => {
         </TabsContent>
 
         <TabsContent value="recommendations" className="mt-6 space-y-4">
-          {recommendations.length === 0 ? (
+          {/* Category Filters */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button
+              variant={categoryFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCategoryFilter("all")}
+            >
+              All
+            </Button>
+            <Button
+              variant={categoryFilter === "time_management" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCategoryFilter("time_management")}
+            >
+              Time Management
+            </Button>
+            <Button
+              variant={categoryFilter === "energy_optimization" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCategoryFilter("energy_optimization")}
+            >
+              Energy Optimization
+            </Button>
+            <Button
+              variant={categoryFilter === "break_scheduling" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCategoryFilter("break_scheduling")}
+            >
+              Break Scheduling
+            </Button>
+          </div>
+
+          {filteredRecommendations.length === 0 ? (
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">No recommendations available yet</p>
+              <p className="text-muted-foreground">No recommendations available in this category</p>
             </div>
           ) : (
-            recommendations.map((rec, idx) => (
+            filteredRecommendations.map((rec, idx) => (
               <div key={idx} className="p-4 rounded-lg bg-card border border-border">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-foreground">{rec.title}</h3>
-                    <Badge variant={getPriorityColor(rec.priority)} className="mt-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-foreground">{rec.title}</h3>
+                      {appliedRecommendations.has(rec.title) && (
+                        <Badge variant="outline" className="bg-primary/10 text-primary text-xs">
+                          Applied
+                        </Badge>
+                      )}
+                    </div>
+                    <Badge variant={getPriorityColor(rec.priority)} className="mb-2">
                       {rec.priority} priority
+                    </Badge>
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {rec.category.replace('_', ' ')}
                     </Badge>
                   </div>
                   {rec.actionable && (
-                    <Badge variant="outline" className="bg-primary/10 text-primary">
+                    <Badge variant="outline" className="bg-accent/10 text-accent">
                       Actionable
                     </Badge>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">{rec.description}</p>
-                {rec.actionable && (
+                {rec.actionable && !appliedRecommendations.has(rec.title) && (
                   <div className="mt-3">
                     <Button
                       size="sm"
-                      onClick={() => {
-                        toast({
-                          title: "Recommendation Applied",
-                          description: "This feature will be implemented based on the recommendation",
-                        });
-                      }}
+                      onClick={() => handleApplyRecommendation(rec)}
                     >
                       Apply Now
                     </Button>

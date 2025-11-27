@@ -2,3 +2,6 @@ project_id = "vjxqexbpgcwofughuchy"
 
 [functions.ai-analytics]
 verify_jwt = true
+
+[functions.plan-day]
+verify_jwt = true

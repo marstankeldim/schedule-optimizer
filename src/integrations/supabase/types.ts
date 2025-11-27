@@ -248,6 +248,39 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_applications: {
+        Row: {
+          applied_at: string
+          created_at: string
+          id: string
+          notes: string | null
+          recommendation_category: string
+          recommendation_title: string
+          success_rating: number | null
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recommendation_category: string
+          recommendation_title: string
+          success_rating?: number | null
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recommendation_category?: string
+          recommendation_title?: string
+          success_rating?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       recurring_tasks: {
         Row: {
           created_at: string
