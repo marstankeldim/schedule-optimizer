@@ -1,8 +1,6 @@
 Do tasks more efficient than others using Schedule Optimizer by Ayan Ospan
 
 
-# Welcome to your Lovable project
-
 ## Project info
 
 **URL**: https://lovable.dev/projects/eb695f51-e5af-4271-adcf-adc3834f8c88
