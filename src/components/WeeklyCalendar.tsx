@@ -14,14 +14,17 @@ interface WeeklyCalendarProps {
   weeklySchedule: WeeklySchedule;
   onMarkTaskComplete?: (task: ScheduledTask, day: string) => void;
   completedTaskIds?: Set<string>;
+  selectedWorkdays?: string[];
 }
 
 export const WeeklyCalendar = ({ 
   weeklySchedule, 
   onMarkTaskComplete,
-  completedTaskIds = new Set()
+  completedTaskIds = new Set(),
+  selectedWorkdays
 }: WeeklyCalendarProps) => {
-  const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const allDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const daysOfWeek = selectedWorkdays && selectedWorkdays.length > 0 ? selectedWorkdays : allDays;
 
   const getEnergyColor = (level: string) => {
     switch (level) {
@@ -51,7 +54,7 @@ export const WeeklyCalendar = ({
     <ScrollArea className="h-[calc(100vh-200px)] w-full">
       <div className="min-w-max">
         {/* Calendar Header */}
-        <div className="grid grid-cols-7 gap-2 mb-3 sticky top-0 bg-background z-10 pb-3">
+        <div className={`grid gap-2 mb-3 sticky top-0 bg-background z-10 pb-3`} style={{ gridTemplateColumns: `repeat(${daysOfWeek.length}, minmax(0, 1fr))` }}>
           {daysOfWeek.map((day) => {
             const daySchedule = weeklySchedule[day] || [];
             const tasks = daySchedule.filter(t => !t.isBreak);
@@ -69,7 +72,7 @@ export const WeeklyCalendar = ({
         </div>
 
         {/* Calendar Body */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${daysOfWeek.length}, minmax(0, 1fr))` }}>
           {daysOfWeek.map((day) => {
             const daySchedule = weeklySchedule[day] || [];
 
