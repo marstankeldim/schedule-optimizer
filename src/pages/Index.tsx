@@ -679,6 +679,14 @@ const Index = () => {
                 <BarChart3 className="w-4 h-4 mr-2" />
                 Analytics
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/ai-insights")}
+                className="bg-primary/10 hover:bg-primary/20 border-primary/30"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                AI Insights
+              </Button>
               {savedSchedules.length > 0 && (
                 <Button
                   variant="outline"
