@@ -29,6 +29,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { StreakTracker } from "@/components/StreakTracker";
 import { Achievements } from "@/components/Achievements";
+import { MentalHealthRewards } from "@/components/MentalHealthRewards";
+import { CompletionCelebration } from "@/components/CompletionCelebration";
 
 const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +51,7 @@ const Index = () => {
   const [dependencyDialogOpen, setDependencyDialogOpen] = useState(false);
   const [selectedTaskForDependency, setSelectedTaskForDependency] = useState<Task | null>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
@@ -179,11 +182,58 @@ const Index = () => {
         priority: data.priority as "high" | "medium" | "low",
       };
       setTasks([...tasks, task]);
+      
+      // Smart task insertion: If schedule exists, insert into free slots
+      if (schedule.length > 0) {
+        const firstIncompleteIndex = schedule.findIndex(t => !t.isBreak && !completedTaskIds.has(t.id));
+        
+        if (firstIncompleteIndex !== -1) {
+          // Calculate new times based on insertion point
+          const insertTime = parseTime(schedule[firstIncompleteIndex].startTime);
+          const newScheduledTask: ScheduledTask = {
+            ...task,
+            startTime: formatTime(insertTime),
+            endTime: formatTime(insertTime + task.duration),
+          };
+          
+          // Recalculate subsequent tasks
+          const updatedSchedule = [...schedule];
+          updatedSchedule.splice(firstIncompleteIndex, 0, newScheduledTask);
+          
+          // Recalculate all times after insertion
+          let currentTime = insertTime;
+          for (let i = firstIncompleteIndex; i < updatedSchedule.length; i++) {
+            updatedSchedule[i].startTime = formatTime(currentTime);
+            currentTime += updatedSchedule[i].duration;
+            updatedSchedule[i].endTime = formatTime(currentTime);
+          }
+          
+          setSchedule(updatedSchedule);
+          
+          toast({
+            title: "Task added to schedule",
+            description: `"${task.title}" has been inserted into your schedule`,
+          });
+          return;
+        }
+      }
+      
       toast({
         title: "Task added",
         description: `"${task.title}" has been added to your task list`,
       });
     }
+  };
+  
+  const parseTime = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const formatTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
   };
 
   const handleAddMultipleTasks = async (newTasks: Omit<Task, "id">[]) => {
@@ -434,6 +484,11 @@ const Index = () => {
           checkSpeedDemon(lastTask.endTime, new Date());
         }
         checkStreakAchievements(currentStreak + 1);
+        
+        // Show celebration when all tasks complete
+        setTimeout(() => {
+          setShowCelebration(true);
+        }, 500);
       }
     }
 
@@ -905,6 +960,11 @@ const Index = () => {
             {session?.user && (
               <Achievements userId={session.user.id} currentStreak={currentStreak} />
             )}
+            
+            {/* Mental Health Rewards */}
+            {session?.user && (
+              <MentalHealthRewards userId={session.user.id} />
+            )}
 
             {/* AI Insights */}
             {session?.user && (
@@ -1059,6 +1119,7 @@ const Index = () => {
                 });
               }}
               completedTaskIds={completedTaskIds}
+              selectedWorkdays={workdays}
             />
             </>
           ) : (
@@ -1101,6 +1162,20 @@ const Index = () => {
               const task = schedule.find((t) => t.id === taskId);
               if (task) handleMarkTaskComplete(task);
             }}
+          />
+        )}
+        
+        {/* Completion Celebration */}
+        {showCelebration && (
+          <CompletionCelebration
+            onContinue={() => {
+              setShowCelebration(false);
+              setSchedule([]);
+              setWeeklySchedule({});
+              setCompletedTaskIds(new Set());
+            }}
+            tasksCompleted={schedule.filter(t => !t.isBreak).length}
+            currentStreak={currentStreak}
           />
         )}
       </div>
