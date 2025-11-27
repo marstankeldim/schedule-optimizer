@@ -89,11 +89,13 @@ serve(async (req) => {
     } else if (type === 'smart_recommendations') {
       systemPrompt = `You are an AI scheduling assistant. Provide smart recommendations for tasks and schedule optimization.
       
+      Categorize recommendations into: "time_management", "energy_optimization", or "break_scheduling".
+      
       Return ONLY a JSON object with this structure:
       {
         "recommendations": [
           {
-            "category": "task_suggestion",
+            "category": "time_management",
             "title": "Add stretching breaks",
             "description": "Consider adding 5-minute stretching sessions between long focus blocks",
             "priority": "medium",
@@ -108,7 +110,26 @@ serve(async (req) => {
       Recurring Tasks: ${JSON.stringify(recurringTasks.data)}
       Recent Completed Tasks: ${JSON.stringify(completedTasks.data?.slice(0, 15))}
       
-      Suggest: new tasks to add, recurring patterns to automate, or schedule improvements.`;
+      Provide 5-8 recommendations across all three categories: time_management, energy_optimization, and break_scheduling.`;
+    } else if (type === 'daily_summary') {
+      systemPrompt = `You are an AI productivity coach. Generate a concise daily summary with priorities and recommendations.
+      
+      Return ONLY a JSON object with this structure:
+      {
+        "summary": {
+          "topPriorities": ["Task 1", "Task 2", "Task 3"],
+          "energyPattern": "Your energy peaks in the morning hours",
+          "keyRecommendation": "Focus on high-priority tasks before lunch",
+          "workloadEstimate": "6-7 hours of focused work"
+        }
+      }`;
+
+      userPrompt = `Generate a daily summary based on:
+      
+      Current Tasks: ${JSON.stringify(tasks.data)}
+      Recent Patterns: ${JSON.stringify(completedTasks.data?.slice(0, 10))}
+      
+      Provide actionable insights for today.`;
     }
 
     // Call Lovable AI
