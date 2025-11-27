@@ -219,6 +219,21 @@ export const AIInsights = ({ userId }: AIInsightsProps) => {
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">{rec.description}</p>
+                {rec.actionable && (
+                  <div className="mt-3">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        toast({
+                          title: "Recommendation Applied",
+                          description: "This feature will be implemented based on the recommendation",
+                        });
+                      }}
+                    >
+                      Apply Now
+                    </Button>
+                  </div>
+                )}
               </div>
             ))
           )}
