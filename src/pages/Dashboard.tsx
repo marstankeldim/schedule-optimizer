@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { BreakAdherenceAnalytics } from "@/components/BreakAdherenceAnalytics";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, TrendingUp, Clock, Zap, Coffee, Calendar, Trophy } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
+import { BreakAdherenceAnalytics } from "@/components/BreakAdherenceAnalytics";
+import { WeeklyReportCard } from "@/components/WeeklyReportCard";
 import {
   LineChart,
   Line,
@@ -424,7 +425,8 @@ const Dashboard = () => {
 
         {/* Break Adherence Analytics */}
         {session?.user && (
-          <div className="mb-8">
+          <div className="grid grid-cols-1 gap-8 mb-8">
+            <WeeklyReportCard userId={session.user.id} />
             <BreakAdherenceAnalytics userId={session.user.id} />
           </div>
         )}
