@@ -26,28 +26,20 @@ interface TaskInputProps {
 
 export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputProps) => {
   const [title, setTitle] = useState("");
-  const [taskTime, setTaskTime] = useState<string>("");
+  const [taskTime, setTaskTime] = useState<string | null>(null);
   const [duration, setDuration] = useState("30");
   const [energyLevel, setEnergyLevel] = useState<Task["energyLevel"]>("medium");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
   const [pendingTask, setPendingTask] = useState<Omit<Task, "id"> | null>(null);
 
-  const date_to_time_str = (date: Date) => {
-    const HH = date.getHours();
-    const MM = date.getMinutes();
-
-    return `${HH}-${MM}`;
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    // taskTime is available if needed for scheduling
-
     const newTask = {
       title: title.trim(),
+      time: taskTime,
       duration: parseInt(duration),
       energyLevel,
       priority,
@@ -55,6 +47,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
 
     onAddTask(newTask);
     setTitle("");
+    setTaskTime(null);
     setDuration("30");
     setEnergyLevel("medium");
     setPriority("medium");
@@ -76,6 +69,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
 
   const handleRecurringSuccess = () => {
     setTitle("");
+    setTaskTime(null);
     setDuration("30");
     setEnergyLevel("medium");
     setPriority("medium");
@@ -109,7 +103,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
             <Input
               id="task_time"
               type="time"
-              value={taskTime}
+              value={taskTime ?? undefined}
               onChange={(e) => setTaskTime(e.target.value)}
               placeholder="Set task's start time..."
               className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
