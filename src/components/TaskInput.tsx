@@ -35,10 +35,10 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
   const date_to_time_str = (date: Date) => {
     const HH = date.getHours();
     const MM = date.getMinutes();
-    
+
     return `${HH}-${MM}`;
   };
-  
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -98,7 +98,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
               className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
             />
           </div>
-          
+
           <div>
             <Label htmlFor="title" className="text-foreground">
               Start time
@@ -110,7 +110,6 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
               defaultValue={taskTime}
               value={taskTime}
               onChange={(e) => setTaskTime(e.target.value)}
-              /* {/* onChange={(e) => setTitle(e.target.value)} */} */
               placeholder="Set task's start time..."
               className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
             />
