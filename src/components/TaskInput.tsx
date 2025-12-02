@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card";
 import { Plus, Repeat } from "lucide-react";
 import { RecurringTaskDialog } from "./RecurringTaskDialog";
+import { toast } from "@/hooks/use-toast";
 
 export interface Task {
   id: string;
@@ -42,6 +43,8 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    toast({ title: task_time.toLocalString() });
 
     const newTask = {
       title: title.trim(),
