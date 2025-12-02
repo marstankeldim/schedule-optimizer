@@ -44,7 +44,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
     e.preventDefault();
     if (!title.trim()) return;
 
-    toast({ title: task_time.toLocalString() });
+    toast({ title: taskTime });
 
     const newTask = {
       title: title.trim(),
