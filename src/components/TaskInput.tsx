@@ -26,7 +26,7 @@ interface TaskInputProps {
 
 export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputProps) => {
   const [title, setTitle] = useState("");
-  const [taskTime, setTaskTime] = useState<Date>(new Date());
+  const [taskTime, setTaskTime] = useState<string>("");
   const [duration, setDuration] = useState("30");
   const [energyLevel, setEnergyLevel] = useState<Task["energyLevel"]>("medium");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
@@ -44,7 +44,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
     e.preventDefault();
     if (!title.trim()) return;
 
-    toast({ title: taskTime });
+    // taskTime is available if needed for scheduling
 
     const newTask = {
       title: title.trim(),
@@ -109,8 +109,6 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
             <Input
               id="task_time"
               type="time"
-              step="1"
-              defaultValue={taskTime}
               value={taskTime}
               onChange={(e) => setTaskTime(e.target.value)}
               placeholder="Set task's start time..."
