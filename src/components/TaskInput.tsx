@@ -110,7 +110,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
               defaultValue={taskTime}
               value={taskTime}
               onChange={(e) => setTaskTime(e.target.value)}
-              {/* onChange={(e) => setTitle(e.target.value)} */}
+              /* {/* onChange={(e) => setTitle(e.target.value)} */} */
               placeholder="Set task's start time..."
               className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
             />
