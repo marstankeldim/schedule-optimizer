@@ -11,7 +11,7 @@ import { toast } from "@/hooks/use-toast";
 export interface Task {
   id: string;
   title: string;
-  time?: Date;
+  time?: string;
   duration: number;
   energyLevel: "high" | "medium" | "low";
   priority: "high" | "medium" | "low";
