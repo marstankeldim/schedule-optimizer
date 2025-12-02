@@ -19,7 +19,21 @@ import { AIInsights } from "@/components/AIInsights";
 import { SchedulePreferences } from "@/components/SchedulePreferences";
 import { WeeklyOptimizationSettings } from "@/components/WeeklyOptimizationSettings";
 import { WorkloadBalanceChart } from "@/components/WorkloadBalanceChart";
-import { Sparkles, Trash2, Calendar, Clock, Coffee, LogOut, Save, History, CheckCircle2, BarChart3, GitBranch, Focus, Bell } from "lucide-react";
+import {
+  Sparkles,
+  Trash2,
+  Calendar,
+  Clock,
+  Coffee,
+  LogOut,
+  Save,
+  History,
+  CheckCircle2,
+  BarChart3,
+  GitBranch,
+  Focus,
+  Bell,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
 import { useStreakTracking } from "@/hooks/useStreakTracking";
@@ -56,20 +70,29 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
-  const { currentStreak, longestStreak, loading: streakLoading, updateDailyCompletion } = useStreakTracking(session?.user?.id);
-  const { checkTaskCompletionAchievements, checkSpeedDemon, checkStreakAchievements } = useAchievements(session?.user?.id);
-  const { scheduleBreakNotifications, notificationsEnabled, checkPermissions } = useBreakNotifications(session?.user?.id);
+  const {
+    currentStreak,
+    longestStreak,
+    loading: streakLoading,
+    updateDailyCompletion,
+  } = useStreakTracking(session?.user?.id);
+  const { checkTaskCompletionAchievements, checkSpeedDemon, checkStreakAchievements } = useAchievements(
+    session?.user?.id,
+  );
+  const { scheduleBreakNotifications, notificationsEnabled, checkPermissions } = useBreakNotifications(
+    session?.user?.id,
+  );
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        if (!session && event === 'SIGNED_OUT') {
-          navigate("/auth");
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      if (!session && event === "SIGNED_OUT") {
+        navigate("/auth");
       }
-    );
+    });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -183,11 +206,11 @@ const Index = () => {
         priority: data.priority as "high" | "medium" | "low",
       };
       setTasks([...tasks, task]);
-      
+
       // Smart task insertion: If schedule exists, insert into free slots
       if (schedule.length > 0) {
-        const firstIncompleteIndex = schedule.findIndex(t => !t.isBreak && !completedTaskIds.has(t.id));
-        
+        const firstIncompleteIndex = schedule.findIndex((t) => !t.isBreak && !completedTaskIds.has(t.id));
+
         if (firstIncompleteIndex !== -1) {
           // Calculate new times based on insertion point
           const insertTime = parseTime(schedule[firstIncompleteIndex].startTime);
@@ -196,11 +219,11 @@ const Index = () => {
             startTime: formatTime(insertTime),
             endTime: formatTime(insertTime + task.duration),
           };
-          
+
           // Recalculate subsequent tasks
           const updatedSchedule = [...schedule];
           updatedSchedule.splice(firstIncompleteIndex, 0, newScheduledTask);
-          
+
           // Recalculate all times after insertion
           let currentTime = insertTime;
           for (let i = firstIncompleteIndex; i < updatedSchedule.length; i++) {
@@ -208,9 +231,9 @@ const Index = () => {
             currentTime += updatedSchedule[i].duration;
             updatedSchedule[i].endTime = formatTime(currentTime);
           }
-          
+
           setSchedule(updatedSchedule);
-          
+
           toast({
             title: "Task added to schedule",
             description: `"${task.title}" has been inserted into your schedule`,
@@ -218,23 +241,23 @@ const Index = () => {
           return;
         }
       }
-      
+
       toast({
         title: "Task added",
         description: `"${task.title}" has been added to your task list`,
       });
     }
   };
-  
+
   const parseTime = (time: string): number => {
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = time.split(":").map(Number);
     return hours * 60 + minutes;
   };
 
   const formatTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
   };
 
   const handleAddMultipleTasks = async (newTasks: Omit<Task, "id">[]) => {
@@ -248,10 +271,7 @@ const Index = () => {
       priority: task.priority,
     }));
 
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert(tasksToInsert)
-      .select();
+    const { data, error } = await supabase.from("tasks").insert(tasksToInsert).select();
 
     if (error) {
       toast({
@@ -288,9 +308,9 @@ const Index = () => {
     setIsOptimizing(true);
     try {
       const { data, error } = await supabase.functions.invoke("optimize-schedule", {
-        body: { 
-          tasks, 
-          startTime, 
+        body: {
+          tasks,
+          startTime,
           breakPreference,
           userId: session?.user?.id,
           planningPeriod,
@@ -303,7 +323,7 @@ const Index = () => {
       if (planningPeriod === "week") {
         setWeeklySchedule(data.weeklySchedule);
         setSchedule([]); // Clear daily schedule
-        
+
         // Schedule notifications for each day's breaks
         if (notificationsEnabled) {
           const today = new Date();
@@ -316,7 +336,7 @@ const Index = () => {
       } else {
         setSchedule(data.schedule);
         setWeeklySchedule({}); // Clear weekly schedule
-        
+
         // Schedule notifications for tomorrow's breaks
         if (notificationsEnabled) {
           const tomorrow = new Date();
@@ -324,18 +344,19 @@ const Index = () => {
           scheduleBreakNotifications(data.schedule, tomorrow);
         }
       }
-      
+
       setCompletedTaskIds(new Set()); // Reset completed tasks for new schedule
-      
-      const notifMessage = notificationsEnabled 
+
+      const notifMessage = notificationsEnabled
         ? "Break notifications have been scheduled!"
         : "Enable notifications to get break reminders";
-      
+
       toast({
         title: "Schedule optimized!",
-        description: planningPeriod === "week" 
-          ? `Your tasks have been distributed across the week. ${notifMessage}`
-          : `Your tasks have been arranged for optimal productivity. ${notifMessage}`,
+        description:
+          planningPeriod === "week"
+            ? `Your tasks have been distributed across the week. ${notifMessage}`
+            : `Your tasks have been arranged for optimal productivity. ${notifMessage}`,
       });
     } catch (error) {
       console.error("Error optimizing schedule:", error);
@@ -351,16 +372,14 @@ const Index = () => {
 
   const handleSaveSchedule = async () => {
     if (!session?.user) return;
-    
+
     const hasSchedule = schedule.length > 0 || Object.keys(weeklySchedule).length > 0;
     if (!hasSchedule) return;
 
     const name = scheduleName || `Schedule ${new Date().toLocaleDateString()}`;
-    
+
     // Save either weekly or daily schedule
-    const scheduleData = Object.keys(weeklySchedule).length > 0 
-      ? { weeklySchedule } 
-      : schedule;
+    const scheduleData = Object.keys(weeklySchedule).length > 0 ? { weeklySchedule } : schedule;
 
     const { error } = await supabase.from("schedules").insert({
       user_id: session.user.id,
@@ -421,43 +440,48 @@ const Index = () => {
 
   const handleMarkTaskComplete = async (task: ScheduledTask) => {
     if (!session?.user) return;
-    
+
     // Handle break completion separately
     if (task.isBreak) {
       setCompletedTaskIds((prev) => new Set([...prev, task.id]));
-      
+
       // Track break adherence
-      const [hours, minutes] = task.startTime.split(':').map(Number);
+      const [hours, minutes] = task.startTime.split(":").map(Number);
       const today = new Date();
       const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
-      
+
       let breakType = "regular";
-      if (task.title.toLowerCase().includes('hydration') || task.title.includes('💧')) {
+      if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
         breakType = "hydration";
-      } else if (task.title.toLowerCase().includes('breakfast') || 
-                 task.title.toLowerCase().includes('lunch') || 
-                 task.title.toLowerCase().includes('dinner')) {
+      } else if (
+        task.title.toLowerCase().includes("breakfast") ||
+        task.title.toLowerCase().includes("lunch") ||
+        task.title.toLowerCase().includes("dinner")
+      ) {
         breakType = "meal";
       }
-      
-      await supabase.from("break_adherence").upsert({
-        user_id: session.user.id,
-        break_type: breakType,
-        break_title: task.title,
-        scheduled_time: scheduledTime.toISOString(),
-        taken: true,
-        taken_at: new Date().toISOString(),
-        duration_minutes: task.duration,
-        date: today.toISOString().split('T')[0]
-      }, {
-        onConflict: 'user_id,break_title,scheduled_time'
-      });
-      
+
+      await supabase.from("break_adherence").upsert(
+        {
+          user_id: session.user.id,
+          break_type: breakType,
+          break_title: task.title,
+          scheduled_time: scheduledTime.toISOString(),
+          taken: true,
+          taken_at: new Date().toISOString(),
+          duration_minutes: task.duration,
+          date: today.toISOString().split("T")[0],
+        },
+        {
+          onConflict: "user_id,break_title,scheduled_time",
+        },
+      );
+
       toast({
         title: "Break completed!",
         description: `"${task.title}" marked as taken`,
       });
-      
+
       return;
     }
 
@@ -470,14 +494,14 @@ const Index = () => {
     setCompletedTaskIds((prev) => new Set([...prev, task.id]));
 
     // Update daily completion tracking and check achievements
-    const nonBreakTasks = schedule.filter(t => !t.isBreak);
+    const nonBreakTasks = schedule.filter((t) => !t.isBreak);
     const completedCount = completedTaskIds.size + 1; // +1 for current task
     updateDailyCompletion(completedCount, nonBreakTasks.length);
 
     // Check achievements
     if (session?.user?.id) {
       checkTaskCompletionAchievements(new Date());
-      
+
       // Check if all tasks are done (Speed Demon)
       if (completedCount === nonBreakTasks.length) {
         const lastTask = schedule[schedule.length - 1];
@@ -485,7 +509,7 @@ const Index = () => {
           checkSpeedDemon(lastTask.endTime, new Date());
         }
         checkStreakAchievements(currentStreak + 1);
-        
+
         // Show celebration when all tasks complete
         setTimeout(() => {
           setShowCelebration(true);
@@ -543,10 +567,7 @@ const Index = () => {
   const handleClearTasks = async () => {
     if (!session?.user) return;
 
-    const { error } = await supabase
-      .from("tasks")
-      .delete()
-      .eq("user_id", session.user.id);
+    const { error } = await supabase.from("tasks").delete().eq("user_id", session.user.id);
 
     if (error) {
       toast({
@@ -577,7 +598,7 @@ const Index = () => {
 
     // Get incomplete tasks (exclude breaks)
     const incompleteTasks = schedule.filter((t) => !t.isBreak);
-    
+
     if (incompleteTasks.length === 0) {
       toast({
         title: "No tasks to reschedule",
@@ -595,10 +616,7 @@ const Index = () => {
       priority: t.priority,
     }));
 
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert(tasksToAdd)
-      .select();
+    const { data, error } = await supabase.from("tasks").insert(tasksToAdd).select();
 
     if (error) {
       toast({
@@ -629,10 +647,13 @@ const Index = () => {
 
         // Map old dependency IDs to new ones
         if (deps && deps.length > 0) {
-          const dependencyMappings = incompleteTasks.reduce((acc, task, idx) => {
-            acc[task.id] = addedTasks[idx].id;
-            return acc;
-          }, {} as Record<string, string>);
+          const dependencyMappings = incompleteTasks.reduce(
+            (acc, task, idx) => {
+              acc[task.id] = addedTasks[idx].id;
+              return acc;
+            },
+            {} as Record<string, string>,
+          );
 
           const newDeps = deps
             .map((dep) => ({
@@ -650,7 +671,7 @@ const Index = () => {
 
       setTasks([...tasks, ...addedTasks]);
       setSchedule([]);
-      
+
       toast({
         title: "Tasks rescheduled",
         description: `${incompleteTasks.length} task(s) added to your task list for tomorrow`,
@@ -719,9 +740,7 @@ const Index = () => {
             </div>
           </div>
           <div className="text-center">
-            <h1 className="text-5xl font-bold text-foreground mb-3 tracking-tight">
-              Schedule Optimizer
-            </h1>
+            <h1 className="text-5xl font-bold text-foreground mb-3 tracking-tight">Schedule Optimizer</h1>
             <p className="text-xl text-muted-foreground">
               AI-powered task scheduling that adapts to your energy levels and priorities
             </p>
@@ -741,7 +760,8 @@ const Index = () => {
                   <div>
                     <h3 className="font-medium text-foreground">{saved.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(saved.created_at).toLocaleDateString()} • Start: {saved.start_time} • {saved.schedule_data.length} items
+                      {new Date(saved.created_at).toLocaleDateString()} • Start: {saved.start_time} •{" "}
+                      {saved.schedule_data.length} items
                     </p>
                   </div>
                   <Button
@@ -761,397 +781,380 @@ const Index = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column - Input */}
             <div className="lg:col-span-2 space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
-              
-              {/* Planning Period Selector */}
-              <Card className="p-4 mb-4">
-                <Label className="text-sm font-medium mb-3 block">Planning Period</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={planningPeriod === "tomorrow" ? "default" : "outline"}
-                    onClick={() => setPlanningPeriod("tomorrow")}
-                    className="flex-1"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Tomorrow
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={planningPeriod === "week" ? "default" : "outline"}
-                    onClick={() => setPlanningPeriod("week")}
-                    className="flex-1"
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    Whole Week
-                  </Button>
-                </div>
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
 
-                {/* Workdays Selector */}
-                {planningPeriod === "week" && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <Label className="text-sm font-medium mb-3 block">Workdays</Label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
-                        <Button
-                          key={day}
-                          type="button"
-                          variant={workdays.includes(day) ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setWorkdays(prev => 
-                              prev.includes(day) 
-                                ? prev.filter(d => d !== day)
-                                : [...prev, day]
-                            );
-                          }}
-                          className="text-xs"
-                        >
-                          {day.slice(0, 3)}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-              <TaskInput 
-                onAddTask={handleAddTask}
-                userId={session?.user?.id}
-                onRecurringCreated={() => setRecurringTasksKey(prev => prev + 1)}
-              />
-            </div>
-
-            {/* Task Templates */}
-            <TaskTemplates onSelectTemplate={handleAddTask} />
-
-            {/* Recurring Tasks */}
-            {session?.user && (
-              <RecurringTasks 
-                key={recurringTasksKey}
-                userId={session.user.id}
-                onTasksGenerated={loadTasks}
-              />
-            )}
-
-            {/* Calendar Import */}
-            {session?.user && (
-              <CalendarImport
-                userId={session.user.id}
-                onEventsImported={() => {
-                  // Refresh calendar events when imported
-                  toast({
-                    title: "Calendar updated",
-                    description: "Your schedule optimization will now consider your calendar events",
-                  });
-                }}
-              />
-            )}
-
-            {/* Plan My Day */}
-            {session?.user && (
-              <PlanMyDay
-                userId={session.user.id}
-                onTasksGenerated={(newTasks) => {
-                  setTasks(prev => [...prev, ...newTasks]);
-                }}
-              />
-            )}
-
-            {/* Task List */}
-            {tasks.length > 0 && (
-              <Card className="p-6 bg-gradient-card border-border shadow-card">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Tasks ({tasks.length})
-                  </h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearTasks}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Clear All
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {tasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="p-3 bg-secondary rounded-lg border border-border flex items-center justify-between"
+                {/* Planning Period Selector */}
+                <Card className="p-4 mb-4">
+                  <Label className="text-sm font-medium mb-3 block">Planning Period</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={planningPeriod === "tomorrow" ? "default" : "outline"}
+                      onClick={() => setPlanningPeriod("tomorrow")}
+                      className="flex-1"
                     >
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{task.title}</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {task.duration}min • {task.energyLevel} energy • {task.priority} priority
-                        </p>
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Tomorrow
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={planningPeriod === "week" ? "default" : "outline"}
+                      onClick={() => setPlanningPeriod("week")}
+                      className="flex-1"
+                    >
+                      <Clock className="w-4 h-4 mr-2" />
+                      Whole Week
+                    </Button>
+                  </div>
+
+                  {/* Workdays Selector */}
+                  {planningPeriod === "week" && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <Label className="text-sm font-medium mb-3 block">Workdays</Label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                          <Button
+                            key={day}
+                            type="button"
+                            variant={workdays.includes(day) ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setWorkdays((prev) =>
+                                prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+                              );
+                            }}
+                            className="text-xs"
+                          >
+                            {day.slice(0, 3)}
+                          </Button>
+                        ))}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setSelectedTaskForDependency(task);
-                          setDependencyDialogOpen(true);
-                        }}
-                        className="hover:bg-primary/10 hover:text-primary"
-                      >
-                        <GitBranch className="w-4 h-4" />
-                      </Button>
                     </div>
-                  ))}
-                </div>
-              </Card>
-            )}
+                  )}
+                </Card>
 
-            {/* Start Time & Break Preferences */}
-            {tasks.length > 0 && (
-              <Card className="p-6 bg-gradient-card border-border shadow-card space-y-4">
-                <div>
-                  <Label htmlFor="startTime" className="text-foreground flex items-center gap-2 mb-3">
-                    <Clock className="w-4 h-4 text-primary" />
-                    What time does your day start?
-                  </Label>
-                  <Input
-                    id="startTime"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="bg-secondary border-border focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="breaks" className="text-foreground flex items-center gap-2 mb-3">
-                    <Coffee className="w-4 h-4 text-primary" />
-                    Break preferences
-                  </Label>
-                  <Select value={breakPreference} onValueChange={(v) => setBreakPreference(v as typeof breakPreference)}>
-                    <SelectTrigger id="breaks" className="bg-secondary border-border focus:border-primary">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No breaks</SelectItem>
-                      <SelectItem value="short">Short breaks (5-10 min)</SelectItem>
-                      <SelectItem value="long">Long breaks (30+ min)</SelectItem>
-                      <SelectItem value="auto">Auto (AI decides based on energy)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Breaks help prevent burnout and maintain productivity
-                  </p>
-                </div>
-              </Card>
-            )}
-
-            {/* Optimize Button */}
-            {tasks.length > 0 && (
-              <Button
-                onClick={handleOptimizeSchedule}
-                disabled={isOptimizing}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow transition-all h-14 text-lg"
-              >
-                {isOptimizing ? (
-                  <>Optimizing your schedule...</>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5 mr-2" />
-                    Optimize with AI
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-
-          {/* Right Column - Goals, Streak, and Achievements */}
-          <div className="space-y-6">
-            {/* Streak Tracker */}
-            {session?.user && (
-              <StreakTracker
-                currentStreak={currentStreak}
-                longestStreak={longestStreak}
-                loading={streakLoading}
-              />
-            )}
-            
-            {/* Achievements */}
-            {session?.user && (
-              <Achievements userId={session.user.id} currentStreak={currentStreak} />
-            )}
-            
-            {/* Mental Health Rewards */}
-            {session?.user && (
-              <MentalHealthRewards userId={session.user.id} />
-            )}
-
-            {/* AI Insights */}
-            {session?.user && (
-              <AIInsights userId={session.user.id} />
-            )}
-            
-            {/* Weekly Optimization Settings */}
-            {session?.user && planningPeriod === "week" && (
-              <WeeklyOptimizationSettings userId={session.user.id} />
-            )}
-            
-            {/* Schedule Preferences */}
-            {session?.user && (
-              <SchedulePreferences userId={session.user.id} />
-            )}
-            
-            {/* Goals Sidebar */}
-            {session?.user && (
-              <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Goals, Streak, and Achievements Section at Top */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            {session?.user && (
-              <>
-                <StreakTracker
-                  currentStreak={currentStreak}
-                  longestStreak={longestStreak}
-                  loading={streakLoading}
+                <TaskInput
+                  onAddTask={handleAddTask}
+                  userId={session?.user?.id}
+                  onRecurringCreated={() => setRecurringTasksKey((prev) => prev + 1)}
                 />
-                <Achievements userId={session.user.id} currentStreak={currentStreak} />
-                <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
-              </>
-            )}
-          </div>
+              </div>
 
-          {/* Fullscreen Schedule */}
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-foreground">
-              {Object.keys(weeklySchedule).length > 0 ? "Your Weekly Schedule" : "Your Optimized Schedule"}
-            </h2>
-            <div className="flex gap-2">
-              {schedule.length > 0 && (
+              {/* Task Templates */}
+              <TaskTemplates onSelectTemplate={handleAddTask} />
+
+              {/* Recurring Tasks */}
+              {session?.user && (
+                <RecurringTasks key={recurringTasksKey} userId={session.user.id} onTasksGenerated={loadTasks} />
+              )}
+
+              {/* Calendar Import */}
+              {session?.user && (
+                <CalendarImport
+                  userId={session.user.id}
+                  onEventsImported={() => {
+                    // Refresh calendar events when imported
+                    toast({
+                      title: "Calendar updated",
+                      description: "Your schedule optimization will now consider your calendar events",
+                    });
+                  }}
+                />
+              )}
+
+              {/* Plan My Day */}
+              {session?.user && (
+                <PlanMyDay
+                  userId={session.user.id}
+                  onTasksGenerated={(newTasks) => {
+                    setTasks((prev) => [...prev, ...newTasks]);
+                  }}
+                />
+              )}
+
+              {/* Task List */}
+              {tasks.length > 0 && (
+                <Card className="p-6 bg-gradient-card border-border shadow-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-foreground">Tasks ({tasks.length})</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearTasks}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clear All
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="p-3 bg-secondary rounded-lg border border-border flex items-center justify-between"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{task.title}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {task.duration}min • {task.energyLevel} energy • {task.priority} priority
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedTaskForDependency(task);
+                            setDependencyDialogOpen(true);
+                          }}
+                          className="hover:bg-primary/10 hover:text-primary"
+                        >
+                          <GitBranch className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Start Time & Break Preferences */}
+              {tasks.length > 0 && (
+                <Card className="p-6 bg-gradient-card border-border shadow-card space-y-4">
+                  <div>
+                    <Label htmlFor="startTime" className="text-foreground flex items-center gap-2 mb-3">
+                      <Clock className="w-4 h-4 text-primary" />
+                      What time does your day start?
+                    </Label>
+                    <Input
+                      id="startTime"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="bg-secondary border-border focus:border-primary transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="breaks" className="text-foreground flex items-center gap-2 mb-3">
+                      <Coffee className="w-4 h-4 text-primary" />
+                      Break preferences
+                    </Label>
+                    <Select
+                      value={breakPreference}
+                      onValueChange={(v) => setBreakPreference(v as typeof breakPreference)}
+                    >
+                      <SelectTrigger id="breaks" className="bg-secondary border-border focus:border-primary">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No breaks</SelectItem>
+                        <SelectItem value="short">Short breaks (5-10 min)</SelectItem>
+                        <SelectItem value="long">Long breaks (30+ min)</SelectItem>
+                        <SelectItem value="auto">Auto (AI decides based on energy)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Breaks help prevent burnout and maintain productivity
+                    </p>
+                  </div>
+                </Card>
+              )}
+
+              {/* Optimize Button */}
+              {tasks.length > 0 && (
                 <Button
-                  onClick={() => setIsFocusMode(true)}
-                  variant="outline"
-                  className="bg-primary/10 hover:bg-primary/20 border-primary/30"
+                  onClick={handleOptimizeSchedule}
+                  disabled={isOptimizing}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow transition-all h-14 text-lg"
                 >
-                  <Focus className="w-4 h-4 mr-2" />
-                  Focus Mode
+                  {isOptimizing ? (
+                    <>Optimizing your schedule...</>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 mr-2" />
+                      Optimize with AI
+                    </>
+                  )}
                 </Button>
               )}
-              <Button
-                onClick={handleRescheduleToTomorrow}
-                variant="outline"
-                className="bg-secondary hover:bg-secondary/80 border-border"
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Reschedule to Tomorrow
-              </Button>
-              <Button
-                onClick={() => {
-                  setSchedule([]);
-                  setWeeklySchedule({});
-                }}
-                variant="outline"
-                className="bg-secondary hover:bg-secondary/80 border-border"
-              >
-                Add More Tasks
-              </Button>
-              <Input
-                placeholder="Schedule name (optional)"
-                value={scheduleName}
-                onChange={(e) => setScheduleName(e.target.value)}
-                className="w-48 bg-secondary border-border"
-              />
-              <Button
-                onClick={handleSaveSchedule}
-                variant="outline"
-                className="bg-secondary hover:bg-secondary/80 border-primary/30"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save
-              </Button>
+            </div>
+
+            {/* Right Column - Goals, Streak, and Achievements */}
+            <div className="space-y-6">
+              {/* Streak Tracker */}
+              {session?.user && (
+                <StreakTracker currentStreak={currentStreak} longestStreak={longestStreak} loading={streakLoading} />
+              )}
+
+              {/* Schedule Preferences */}
+              {session?.user && <SchedulePreferences userId={session.user.id} />}
+
+              {/* Achievements */}
+              {session?.user && <Achievements userId={session.user.id} currentStreak={currentStreak} />}
+
+              {/* Mental Health Rewards */}
+              {session?.user && <MentalHealthRewards userId={session.user.id} />}
+
+              {/* AI Insights */}
+              {session?.user && <AIInsights userId={session.user.id} />}
+
+              {/* Weekly Optimization Settings */}
+              {session?.user && planningPeriod === "week" && <WeeklyOptimizationSettings userId={session.user.id} />}
+
+              {/* Goals Sidebar */}
+              {session?.user && <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />}
             </div>
           </div>
-          
-          {/* Show either weekly or daily schedule */}
-          {Object.keys(weeklySchedule).length > 0 ? (
-            <>
-              <WorkloadBalanceChart weeklySchedule={weeklySchedule} />
-              <WeeklyCalendar
-                weeklySchedule={weeklySchedule}
-                onMarkTaskComplete={(task, day) => {
-                  // Update completed task IDs
-                  setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+        ) : (
+          <div className="space-y-6">
+            {/* Goals, Streak, and Achievements Section at Top */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              {session?.user && (
+                <>
+                  <StreakTracker currentStreak={currentStreak} longestStreak={longestStreak} loading={streakLoading} />
+                  <Achievements userId={session.user.id} currentStreak={currentStreak} />
+                  <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
+                </>
+              )}
+            </div>
 
-                // Handle break completion tracking
-                if (task.isBreak && session?.user) {
-                  const [hours, minutes] = task.startTime.split(':').map(Number);
-                  const today = new Date();
-                  const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
-                  
-                  let breakType = "regular";
-                  if (task.title.toLowerCase().includes('hydration') || task.title.includes('💧')) {
-                    breakType = "hydration";
-                  } else if (task.title.toLowerCase().includes('breakfast') || 
-                             task.title.toLowerCase().includes('lunch') || 
-                             task.title.toLowerCase().includes('dinner')) {
-                    breakType = "meal";
-                  }
-                  
-                  supabase.from("break_adherence").upsert({
-                    user_id: session.user.id,
-                    break_type: breakType,
-                    break_title: task.title,
-                    scheduled_time: scheduledTime.toISOString(),
-                    taken: true,
-                    taken_at: new Date().toISOString(),
-                    duration_minutes: task.duration,
-                    date: today.toISOString().split('T')[0]
-                  }, {
-                    onConflict: 'user_id,break_title,scheduled_time'
-                  });
-                }
+            {/* Fullscreen Schedule */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-foreground">
+                {Object.keys(weeklySchedule).length > 0 ? "Your Weekly Schedule" : "Your Optimized Schedule"}
+              </h2>
+              <div className="flex gap-2">
+                {schedule.length > 0 && (
+                  <Button
+                    onClick={() => setIsFocusMode(true)}
+                    variant="outline"
+                    className="bg-primary/10 hover:bg-primary/20 border-primary/30"
+                  >
+                    <Focus className="w-4 h-4 mr-2" />
+                    Focus Mode
+                  </Button>
+                )}
+                <Button
+                  onClick={handleRescheduleToTomorrow}
+                  variant="outline"
+                  className="bg-secondary hover:bg-secondary/80 border-border"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Reschedule to Tomorrow
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSchedule([]);
+                    setWeeklySchedule({});
+                  }}
+                  variant="outline"
+                  className="bg-secondary hover:bg-secondary/80 border-border"
+                >
+                  Add More Tasks
+                </Button>
+                <Input
+                  placeholder="Schedule name (optional)"
+                  value={scheduleName}
+                  onChange={(e) => setScheduleName(e.target.value)}
+                  className="w-48 bg-secondary border-border"
+                />
+                <Button
+                  onClick={handleSaveSchedule}
+                  variant="outline"
+                  className="bg-secondary hover:bg-secondary/80 border-primary/30"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save
+                </Button>
+              </div>
+            </div>
 
-                // Handle task completion tracking
-                if (!task.isBreak && session?.user) {
-                  supabase.from("completed_tasks").insert({
-                    user_id: session.user.id,
-                    task_title: task.title,
-                    task_duration: task.duration,
-                    energy_level: task.energyLevel,
-                    priority: task.priority,
-                  }).then(({ error }) => {
-                    if (error) {
-                      console.error("Error saving completed task:", error);
-                    } else {
-                      // Check and update goals
-                      checkAndUpdateGoals();
-                      checkTaskCompletionAchievements(new Date());
+            {/* Show either weekly or daily schedule */}
+            {Object.keys(weeklySchedule).length > 0 ? (
+              <>
+                <WorkloadBalanceChart weeklySchedule={weeklySchedule} />
+                <WeeklyCalendar
+                  weeklySchedule={weeklySchedule}
+                  onMarkTaskComplete={(task, day) => {
+                    // Update completed task IDs
+                    setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+
+                    // Handle break completion tracking
+                    if (task.isBreak && session?.user) {
+                      const [hours, minutes] = task.startTime.split(":").map(Number);
+                      const today = new Date();
+                      const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
+
+                      let breakType = "regular";
+                      if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
+                        breakType = "hydration";
+                      } else if (
+                        task.title.toLowerCase().includes("breakfast") ||
+                        task.title.toLowerCase().includes("lunch") ||
+                        task.title.toLowerCase().includes("dinner")
+                      ) {
+                        breakType = "meal";
+                      }
+
+                      supabase.from("break_adherence").upsert(
+                        {
+                          user_id: session.user.id,
+                          break_type: breakType,
+                          break_title: task.title,
+                          scheduled_time: scheduledTime.toISOString(),
+                          taken: true,
+                          taken_at: new Date().toISOString(),
+                          duration_minutes: task.duration,
+                          date: today.toISOString().split("T")[0],
+                        },
+                        {
+                          onConflict: "user_id,break_title,scheduled_time",
+                        },
+                      );
                     }
-                  });
-                }
 
-                toast({
-                  title: "Task Completed!",
-                  description: `"${task.title}" has been marked as complete`,
-                });
-              }}
-              completedTaskIds={completedTaskIds}
-              selectedWorkdays={workdays}
-            />
-            </>
-          ) : (
-            <ScheduleTimeline 
-              schedule={schedule} 
-              onMarkComplete={handleMarkTaskComplete}
-              onReorder={setSchedule}
-              userId={session?.user?.id}
-              completedTaskIds={completedTaskIds}
-            />
-          )}
-        </div>
-      )}
+                    // Handle task completion tracking
+                    if (!task.isBreak && session?.user) {
+                      supabase
+                        .from("completed_tasks")
+                        .insert({
+                          user_id: session.user.id,
+                          task_title: task.title,
+                          task_duration: task.duration,
+                          energy_level: task.energyLevel,
+                          priority: task.priority,
+                        })
+                        .then(({ error }) => {
+                          if (error) {
+                            console.error("Error saving completed task:", error);
+                          } else {
+                            // Check and update goals
+                            checkAndUpdateGoals();
+                            checkTaskCompletionAchievements(new Date());
+                          }
+                        });
+                    }
+
+                    toast({
+                      title: "Task Completed!",
+                      description: `"${task.title}" has been marked as complete`,
+                    });
+                  }}
+                  completedTaskIds={completedTaskIds}
+                  selectedWorkdays={workdays}
+                />
+              </>
+            ) : (
+              <ScheduleTimeline
+                schedule={schedule}
+                onMarkComplete={handleMarkTaskComplete}
+                onReorder={setSchedule}
+                userId={session?.user?.id}
+                completedTaskIds={completedTaskIds}
+              />
+            )}
+          </div>
+        )}
 
         {/* Task History Section */}
         {session && schedule.length === 0 && Object.keys(weeklySchedule).length === 0 && (
@@ -1183,7 +1186,7 @@ const Index = () => {
             }}
           />
         )}
-        
+
         {/* Completion Celebration */}
         {showCelebration && (
           <CompletionCelebration
@@ -1193,7 +1196,7 @@ const Index = () => {
               setWeeklySchedule({});
               setCompletedTaskIds(new Set());
             }}
-            tasksCompleted={schedule.filter(t => !t.isBreak).length}
+            tasksCompleted={schedule.filter((t) => !t.isBreak).length}
             currentStreak={currentStreak}
           />
         )}
