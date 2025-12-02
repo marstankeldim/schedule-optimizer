@@ -10,6 +10,7 @@ import { RecurringTaskDialog } from "./RecurringTaskDialog";
 export interface Task {
   id: string;
   title: string;
+  time?: Date;
   duration: number;
   energyLevel: "high" | "medium" | "low";
   priority: "high" | "medium" | "low";
@@ -78,7 +79,9 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
       <Card className="p-6 bg-gradient-card border-border shadow-card">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="title" className="text-foreground">Task Name</Label>
+            <Label htmlFor="title" className="text-foreground">
+              Task Name
+            </Label>
             <Input
               id="title"
               value={title}
@@ -90,7 +93,9 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="duration" className="text-foreground">Duration (min)</Label>
+              <Label htmlFor="duration" className="text-foreground">
+                Duration (min)
+              </Label>
               <Input
                 id="duration"
                 type="number"
@@ -103,7 +108,9 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
             </div>
 
             <div>
-              <Label htmlFor="energy" className="text-foreground">Energy Level</Label>
+              <Label htmlFor="energy" className="text-foreground">
+                Energy Level
+              </Label>
               <Select value={energyLevel} onValueChange={(v) => setEnergyLevel(v as Task["energyLevel"])}>
                 <SelectTrigger id="energy" className="mt-1.5 bg-secondary border-border focus:border-primary">
                   <SelectValue />
@@ -117,7 +124,9 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
             </div>
 
             <div>
-              <Label htmlFor="priority" className="text-foreground">Priority</Label>
+              <Label htmlFor="priority" className="text-foreground">
+                Priority
+              </Label>
               <Select value={priority} onValueChange={(v) => setPriority(v as Task["priority"])}>
                 <SelectTrigger id="priority" className="mt-1.5 bg-secondary border-border focus:border-primary">
                   <SelectValue />
@@ -132,7 +141,10 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow transition-all">
+            <Button
+              type="submit"
+              className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow transition-all"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Task
             </Button>
