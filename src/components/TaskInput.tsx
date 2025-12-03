@@ -26,7 +26,7 @@ interface TaskInputProps {
 
 export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputProps) => {
   const [title, setTitle] = useState("");
-  const [taskTime, setTaskTime] = useState<string | null>(null);
+  const [taskTime, setTaskTime] = useState("");
   const [duration, setDuration] = useState("30");
   const [energyLevel, setEnergyLevel] = useState<Task["energyLevel"]>("medium");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
@@ -39,7 +39,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
 
     const newTask = {
       title: title.trim(),
-      time: taskTime,
+      time: taskTime || undefined,
       duration: parseInt(duration),
       energyLevel,
       priority,
@@ -47,7 +47,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
 
     onAddTask(newTask);
     setTitle("");
-    setTaskTime(null);
+    setTaskTime("");
     setDuration("30");
     setEnergyLevel("medium");
     setPriority("medium");
@@ -69,7 +69,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
 
   const handleRecurringSuccess = () => {
     setTitle("");
-    setTaskTime(null);
+    setTaskTime("");
     setDuration("30");
     setEnergyLevel("medium");
     setPriority("medium");
@@ -103,7 +103,7 @@ export const TaskInput = ({ onAddTask, userId, onRecurringCreated }: TaskInputPr
             <Input
               id="task_time"
               type="time"
-              value={taskTime ?? undefined}
+              value={taskTime}
               onChange={(e) => setTaskTime(e.target.value)}
               placeholder="Set task's start time..."
               className="mt-1.5 bg-secondary border-border focus:border-primary transition-colors"
