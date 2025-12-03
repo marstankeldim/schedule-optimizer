@@ -900,7 +900,7 @@ const Index = () => {
                         <div className="flex-1">
                           <p className="font-medium text-foreground">{task.title}</p>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {task.duration}min • {task.energyLevel} energy • {task.priority} priority
+                            {task.time} • {task.duration}min • {task.energyLevel} energy • {task.priority} priority
                           </p>
                         </div>
                         <Button
