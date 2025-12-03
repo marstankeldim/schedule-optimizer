@@ -140,31 +140,29 @@ Return as JSON: {"summary": "text", "topRecommendations": ["rec1", "rec2", "rec3
         continue;
       }
 
-      // Trigger email sending in background
-      EdgeRuntime.waitUntil(
-        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-weekly-report`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            email: user.email,
-            reportData: {
-              weekStart: weekStart.toISOString().split('T')[0],
-              weekEnd: weekEnd.toISOString().split('T')[0],
-              summary: reportData.summary,
-              topRecommendations: reportData.topRecommendations,
-              improvements: reportData.improvements,
-              stats: {
-                tasksCompleted: completedTasks.data?.length || 0,
-                goalsAchieved: goals.data?.filter(g => g.achieved).length || 0,
-              }
+      // Trigger email sending (fire and forget)
+      fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-weekly-report`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          email: user.email,
+          reportData: {
+            weekStart: weekStart.toISOString().split('T')[0],
+            weekEnd: weekEnd.toISOString().split('T')[0],
+            summary: reportData.summary,
+            topRecommendations: reportData.topRecommendations,
+            improvements: reportData.improvements,
+            stats: {
+              tasksCompleted: completedTasks.data?.length || 0,
+              goalsAchieved: goals.data?.filter(g => g.achieved).length || 0,
             }
-          })
-        }).catch(err => console.error('Failed to send email:', err))
-      );
+          }
+        })
+      }).catch(err => console.error('Failed to send email:', err));
 
       console.log(`Report generated for user ${user.id}`);
     }
@@ -176,7 +174,7 @@ Return as JSON: {"summary": "text", "topRecommendations": ["rec1", "rec2", "rec3
   } catch (error) {
     console.error('Error generating weekly reports:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

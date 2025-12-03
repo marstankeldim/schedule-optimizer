@@ -1,4 +1,3 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -70,12 +69,12 @@ serve(async (req) => {
 
             <div class="section">
               <h2>⭐ Most Successful Recommendations</h2>
-              ${topRecommendations.map(rec => `<div class="list-item">${rec}</div>`).join('')}
+              ${topRecommendations.map((rec: string) => `<div class="list-item">${rec}</div>`).join('')}
             </div>
 
             <div class="section">
               <h2>🎯 Improvement Suggestions for Next Week</h2>
-              ${improvements.map(imp => `<div class="list-item">${imp}</div>`).join('')}
+              ${improvements.map((imp: string) => `<div class="list-item">${imp}</div>`).join('')}
             </div>
 
             <div class="footer">
@@ -116,7 +115,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error sending weekly report email:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
