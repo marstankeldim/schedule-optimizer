@@ -9,6 +9,7 @@ const corsHeaders = {
 interface Task {
   id: string;
   title: string;
+  time?: string;
   duration: number;
   energyLevel: "high" | "medium" | "low";
   priority: "high" | "medium" | "low";
@@ -24,11 +25,11 @@ interface CalendarEvent {
 
 // Helper function to calculate time
 const addMinutesToTime = (time: string, minutes: number): string => {
-  const [hours, mins] = time.split(':').map(Number);
+  const [hours, mins] = time.split(":").map(Number);
   const totalMinutes = hours * 60 + mins + minutes;
   const newHours = Math.floor(totalMinutes / 60) % 24;
   const newMins = totalMinutes % 60;
-  return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+  return `${String(newHours).padStart(2, "0")}:${String(newMins).padStart(2, "0")}`;
 };
 
 serve(async (req) => {
@@ -37,7 +38,14 @@ serve(async (req) => {
   }
 
   try {
-    const { tasks, startTime = "09:00", breakPreference = "auto", userId, planningPeriod = "tomorrow", workdays } = await req.json();
+    const {
+      tasks,
+      startTime = "09:00",
+      breakPreference = "auto",
+      userId,
+      planningPeriod = "tomorrow",
+      workdays,
+    } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -59,28 +67,24 @@ serve(async (req) => {
     // Fetch user preferences and calendar events
     let calendarEvents: CalendarEvent[] = [];
     let userPreferences: any = null;
-    
+
     if (userId) {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      
+
       // Fetch user preferences
-      const { data: prefsData } = await supabase
-        .from("user_preferences")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
-      
+      const { data: prefsData } = await supabase.from("user_preferences").select("*").eq("user_id", userId).single();
+
       if (prefsData) {
         userPreferences = prefsData;
         console.log("User preferences loaded:", userPreferences);
       }
-      
+
       // Fetch calendar events
       // Get date range based on planning period
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const endDate = new Date(today);
-      
+
       if (planningPeriod === "week") {
         // Get events for the next 7 days
         endDate.setDate(endDate.getDate() + 7);
@@ -107,7 +111,7 @@ serve(async (req) => {
     const taskCount = tasks.length;
     const hasManyTasks = taskCount >= 8;
     const hasModerateTasks = taskCount >= 5 && taskCount < 8;
-    
+
     let breakInstructions = "";
     switch (breakPreference) {
       case "none":
@@ -115,7 +119,8 @@ serve(async (req) => {
         break;
       case "short":
         if (hasManyTasks) {
-          breakInstructions = "Since there are many tasks, include 10-15 minute breaks between tasks to prevent burnout, especially after high-energy tasks.";
+          breakInstructions =
+            "Since there are many tasks, include 10-15 minute breaks between tasks to prevent burnout, especially after high-energy tasks.";
         } else {
           breakInstructions = "Include short 5-10 minute breaks between tasks, especially after high-energy tasks.";
         }
@@ -125,17 +130,19 @@ serve(async (req) => {
         break;
       case "auto":
         if (hasManyTasks) {
-          breakInstructions = "Since there are many tasks (8+), be generous with breaks: 10-15 min after high-energy tasks, 20-30 min after every 3-4 consecutive tasks to prevent burnout.";
+          breakInstructions =
+            "Since there are many tasks (8+), be generous with breaks: 10-15 min after high-energy tasks, 20-30 min after every 3-4 consecutive tasks to prevent burnout.";
         } else if (hasModerateTasks) {
-          breakInstructions = "With a moderate number of tasks, add 5-10 min breaks after high-energy tasks, and 15-20 min after multiple consecutive tasks.";
+          breakInstructions =
+            "With a moderate number of tasks, add 5-10 min breaks after high-energy tasks, and 15-20 min after multiple consecutive tasks.";
         } else {
           breakInstructions = "Add short 5-10 min breaks after high-energy tasks when needed.";
         }
         break;
     }
-    
+
     // Add meal break suggestions based on user preferences or defaults
-    const [startHour] = startTime.split(':').map(Number);
+    const [startHour] = startTime.split(":").map(Number);
     const breakfastTime = userPreferences?.breakfast_time || "08:00";
     const breakfastDuration = userPreferences?.breakfast_duration || 20;
     const lunchTime = userPreferences?.lunch_time || "12:30";
@@ -145,48 +152,56 @@ serve(async (req) => {
     const enableNutrition = userPreferences?.enable_nutrition_reminders !== false;
     const enableHydration = userPreferences?.enable_hydration_reminders !== false;
     const hydrationInterval = userPreferences?.hydration_interval || 120;
-    
+
     let mealBreakInstructions = "\n\nMEAL BREAKS: ";
-    
+
     if (startHour <= 9) {
       mealBreakInstructions += `Add a ${breakfastDuration}-minute breakfast break at ${breakfastTime}. `;
     }
-    
+
     mealBreakInstructions += `Add a ${lunchDuration}-minute lunch break at ${lunchTime}. `;
     mealBreakInstructions += `If the schedule extends past 6pm, add a ${dinnerDuration}-minute dinner break at ${dinnerTime}.`;
-    mealBreakInstructions += "\nMeal breaks should be labeled as 'Breakfast Break', 'Lunch Break', or 'Dinner Break' with isBreak: true.";
-    
+    mealBreakInstructions +=
+      "\nMeal breaks should be labeled as 'Breakfast Break', 'Lunch Break', or 'Dinner Break' with isBreak: true.";
+
     // Add nutrition reminders
     if (enableNutrition) {
-      mealBreakInstructions += "\n\nNUTRITION REMINDERS: For each meal break, add a short description encouraging healthy eating. For example:";
+      mealBreakInstructions +=
+        "\n\nNUTRITION REMINDERS: For each meal break, add a short description encouraging healthy eating. For example:";
       mealBreakInstructions += "\n- Breakfast: 'Time for a nutritious breakfast! Include protein and whole grains.'";
       mealBreakInstructions += "\n- Lunch: 'Enjoy a balanced lunch with vegetables, protein, and complex carbs.'";
       mealBreakInstructions += "\n- Dinner: 'Have a healthy dinner. Keep it light if it's late in the evening.'";
       mealBreakInstructions += "\nInclude these nutrition tips in the task title for meal breaks.";
     }
-    
+
     // Add hydration reminders
     if (enableHydration) {
       mealBreakInstructions += `\n\nHYDRATION REMINDERS: Add 5-minute hydration breaks every ${hydrationInterval} minutes throughout the schedule. Label them as 'Hydration Break 💧 - Drink water to stay energized!' with isBreak: true.`;
     }
-    
+
     breakInstructions += mealBreakInstructions;
 
     // Build calendar events description for the prompt
     let calendarEventsInfo = "";
     if (calendarEvents.length > 0) {
-      calendarEventsInfo = "\n\nIMPORTANT: The user has existing calendar commitments today that you MUST work around. These time slots are UNAVAILABLE and tasks must be scheduled only in the FREE time slots:\n\n";
+      calendarEventsInfo =
+        "\n\nIMPORTANT: The user has existing calendar commitments today that you MUST work around. These time slots are UNAVAILABLE and tasks must be scheduled only in the FREE time slots:\n\n";
       calendarEventsInfo += "Busy time slots (DO NOT schedule tasks during these times):\n";
-      
+
       calendarEvents.forEach((event) => {
         const startDate = new Date(event.start_time);
         const endDate = new Date(event.end_time);
-        const startTimeStr = startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        const endTimeStr = endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const startTimeStr = startDate.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        const endTimeStr = endDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
         calendarEventsInfo += `- ${startTimeStr} to ${endTimeStr}: ${event.title}\n`;
       });
-      
-      calendarEventsInfo += "\nYou MUST schedule tasks only in the time slots that are FREE (not listed above). Find gaps between calendar events and use those for task scheduling.";
+
+      calendarEventsInfo +=
+        "\nYou MUST schedule tasks only in the time slots that are FREE (not listed above). Find gaps between calendar events and use those for task scheduling.";
     }
 
     let systemPrompt = "";
@@ -213,14 +228,18 @@ serve(async (req) => {
 
 IMPORTANT: The user has selected these workdays: ${selectedWorkdays.join(", ")}. Do NOT schedule ANY tasks on non-workdays. Non-workdays should have empty arrays.
 
-${userPreferences ? `
+${
+  userPreferences
+    ? `
 USER OPTIMIZATION PREFERENCES:
 - Maximum hours per day: ${userPreferences.max_hours_per_day || 8} hours of focused work
 - Preferred deep work days: ${userPreferences.preferred_deep_work_days?.join(", ") || "Monday, Tuesday, Wednesday"}
 - Minimum break time: ${userPreferences.min_break_minutes_per_hour || 10} minutes per hour
 - Evening work allowed: ${userPreferences.allow_evening_work !== false ? "Yes" : "No"}
 ${userPreferences.allow_evening_work !== false ? `- Evening cutoff time: ${userPreferences.evening_cutoff_time || "18:00"}` : ""}
-` : ""}
+`
+    : ""
+}
 
 ${calendarEventsInfo}
 
@@ -272,6 +291,7 @@ Optimization rules:
 7. ${calendarEvents.length > 0 ? "If a task won't fit before the next calendar event, move it to after that event." : ""}
 
 IMPORTANT: For breaks, add them as separate items in the schedule array with "isBreak": true. Break titles should describe the break (e.g., "Short Break", "Coffee Break", "Lunch Break", "Rest Period").
+IMPORTANT: Preferred time must be the task's start time
 
 Return ONLY a valid JSON object with this exact structure (no additional text):
 ${responseFormat}`;
@@ -296,13 +316,10 @@ ${responseFormat}`;
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
+        return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again later." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (response.status === 402) {
         return new Response(
@@ -310,7 +327,7 @@ ${responseFormat}`;
           {
             status: 402,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          },
         );
       }
       const errorText = await response.text();
@@ -345,12 +362,9 @@ ${responseFormat}`;
     });
   } catch (error) {
     console.error("Error in optimize-schedule function:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
