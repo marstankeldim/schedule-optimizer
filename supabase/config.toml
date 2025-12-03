@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.send-weekly-report]
 verify_jwt = false
+
+[functions.optimize-schedule]
+verify_jwt = true
