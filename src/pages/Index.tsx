@@ -247,7 +247,7 @@ const Index = () => {
 
       toast({
         title: "Task added",
-        description: `"${task.title}" has been added to your task list ${task.time}`,
+        description: `"${task.title}" has been added to your task list`,
       });
     }
   };
