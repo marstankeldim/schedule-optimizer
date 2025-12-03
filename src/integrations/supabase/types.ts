@@ -410,6 +410,7 @@ export type Database = {
           duration: number
           energy_level: string
           id: string
+          preferred_time: string | null
           priority: string
           recurring_task_id: string | null
           title: string
@@ -420,6 +421,7 @@ export type Database = {
           duration: number
           energy_level: string
           id?: string
+          preferred_time?: string | null
           priority: string
           recurring_task_id?: string | null
           title: string
@@ -430,6 +432,7 @@ export type Database = {
           duration?: number
           energy_level?: string
           id?: string
+          preferred_time?: string | null
           priority?: string
           recurring_task_id?: string | null
           title?: string

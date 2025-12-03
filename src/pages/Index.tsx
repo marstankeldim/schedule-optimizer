@@ -148,9 +148,10 @@ const Index = () => {
     if (error) {
       console.error("Error loading tasks:", error);
     } else if (data && data.length > 0) {
-      const loadedTasks = data.map((t) => ({
+      const loadedTasks = data.map((t: any) => ({
         id: t.id,
         title: t.title,
+        time: t.preferred_time || undefined,
         duration: t.duration,
         energyLevel: t.energy_level as "high" | "medium" | "low",
         priority: t.priority as "high" | "medium" | "low",
@@ -187,6 +188,7 @@ const Index = () => {
         duration: newTask.duration,
         energy_level: newTask.energyLevel,
         priority: newTask.priority,
+        preferred_time: newTask.time || null,
       })
       .select()
       .single();
@@ -201,6 +203,7 @@ const Index = () => {
       const task: Task = {
         id: data.id,
         title: data.title,
+        time: (data as any).preferred_time || undefined,
         duration: data.duration,
         energyLevel: data.energy_level as "high" | "medium" | "low",
         priority: data.priority as "high" | "medium" | "low",
