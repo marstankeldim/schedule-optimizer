@@ -12,6 +12,7 @@ import { RecurringTasks } from "@/components/RecurringTasks";
 import { TaskDependencies } from "@/components/TaskDependencies";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
 import { WeeklyCalendar } from "@/components/WeeklyCalendar";
+import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
 import { CalendarImport } from "@/components/CalendarImport";
@@ -797,153 +798,58 @@ const Index = () => {
           </TabsList>
 
           {/* Calendar Tab */}
-          <TabsContent value="calendar" className="space-y-6">
-            {/* Goals, Streak, and Achievements Section */}
-            <div className="grid lg:grid-cols-3 gap-6">
-              {session?.user && (
-                <>
-                  <StreakTracker currentStreak={currentStreak} longestStreak={longestStreak} loading={streakLoading} />
-                  <Achievements userId={session.user.id} currentStreak={currentStreak} />
-                  <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
-                </>
-              )}
-            </div>
-
-            {/* Schedule Actions */}
-            {(schedule.length > 0 || Object.keys(weeklySchedule).length > 0) && (
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-foreground">
-                  {Object.keys(weeklySchedule).length > 0 ? "Your Weekly Schedule" : "Your Optimized Schedule"}
-                </h2>
-                <div className="flex gap-2">
-                  {schedule.length > 0 && (
-                    <Button
-                      onClick={() => setIsFocusMode(true)}
-                      variant="outline"
-                      className="bg-primary/10 hover:bg-primary/20 border-primary/30"
-                    >
-                      <Focus className="w-4 h-4 mr-2" />
-                      Focus Mode
-                    </Button>
-                  )}
-                  <Button
-                    onClick={handleRescheduleToTomorrow}
-                    variant="outline"
-                    className="bg-secondary hover:bg-secondary/80 border-border"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Reschedule to Tomorrow
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setSchedule([]);
-                      setWeeklySchedule({});
-                    }}
-                    variant="outline"
-                    className="bg-secondary hover:bg-secondary/80 border-border"
-                  >
-                    Clear Schedule
-                  </Button>
-                  <Input
-                    placeholder="Schedule name (optional)"
-                    value={scheduleName}
-                    onChange={(e) => setScheduleName(e.target.value)}
-                    className="w-48 bg-secondary border-border"
-                  />
-                  <Button
-                    onClick={handleSaveSchedule}
-                    variant="outline"
-                    className="bg-secondary hover:bg-secondary/80 border-primary/30"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Calendar/Schedule Display */}
-            {Object.keys(weeklySchedule).length > 0 ? (
-              <>
-                <WorkloadBalanceChart weeklySchedule={weeklySchedule} />
-                <WeeklyCalendar
-                  weeklySchedule={weeklySchedule}
-                  onMarkTaskComplete={(task, day) => {
-                    setCompletedTaskIds((prev) => new Set([...prev, task.id]));
-                    if (task.isBreak && session?.user) {
-                      const [hours, minutes] = task.startTime.split(":").map(Number);
-                      const today = new Date();
-                      const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
-                      let breakType = "regular";
-                      if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
-                        breakType = "hydration";
-                      } else if (
-                        task.title.toLowerCase().includes("breakfast") ||
-                        task.title.toLowerCase().includes("lunch") ||
-                        task.title.toLowerCase().includes("dinner")
-                      ) {
-                        breakType = "meal";
-                      }
-                      supabase.from("break_adherence").upsert({
-                        user_id: session.user.id,
-                        break_type: breakType,
-                        break_title: task.title,
-                        scheduled_time: scheduledTime.toISOString(),
-                        taken: true,
-                        taken_at: new Date().toISOString(),
-                        duration_minutes: task.duration,
-                        date: today.toISOString().split("T")[0],
-                      }, { onConflict: "user_id,break_title,scheduled_time" });
+          <TabsContent value="calendar">
+            <MonthlyCalendar
+              weeklySchedule={weeklySchedule}
+              dailySchedule={schedule}
+              completedTaskIds={completedTaskIds}
+              onTaskComplete={(task, day) => {
+                setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+                if (task.isBreak && session?.user) {
+                  const [hours, minutes] = task.startTime.split(":").map(Number);
+                  const today = new Date();
+                  const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
+                  let breakType = "regular";
+                  if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
+                    breakType = "hydration";
+                  } else if (
+                    task.title.toLowerCase().includes("breakfast") ||
+                    task.title.toLowerCase().includes("lunch") ||
+                    task.title.toLowerCase().includes("dinner")
+                  ) {
+                    breakType = "meal";
+                  }
+                  supabase.from("break_adherence").upsert({
+                    user_id: session.user.id,
+                    break_type: breakType,
+                    break_title: task.title,
+                    scheduled_time: scheduledTime.toISOString(),
+                    taken: true,
+                    taken_at: new Date().toISOString(),
+                    duration_minutes: task.duration,
+                    date: today.toISOString().split("T")[0],
+                  }, { onConflict: "user_id,break_title,scheduled_time" });
+                }
+                if (!task.isBreak && session?.user) {
+                  supabase.from("completed_tasks").insert({
+                    user_id: session.user.id,
+                    task_title: task.title,
+                    task_duration: task.duration,
+                    energy_level: task.energyLevel,
+                    priority: task.priority,
+                  }).then(({ error }) => {
+                    if (!error) {
+                      checkAndUpdateGoals();
+                      checkTaskCompletionAchievements(new Date());
                     }
-                    if (!task.isBreak && session?.user) {
-                      supabase.from("completed_tasks").insert({
-                        user_id: session.user.id,
-                        task_title: task.title,
-                        task_duration: task.duration,
-                        energy_level: task.energyLevel,
-                        priority: task.priority,
-                      }).then(({ error }) => {
-                        if (!error) {
-                          checkAndUpdateGoals();
-                          checkTaskCompletionAchievements(new Date());
-                        }
-                      });
-                    }
-                    toast({
-                      title: "Task Completed!",
-                      description: `"${task.title}" has been marked as complete`,
-                    });
-                  }}
-                  completedTaskIds={completedTaskIds}
-                  selectedWorkdays={workdays}
-                />
-              </>
-            ) : schedule.length > 0 ? (
-              <ScheduleTimeline
-                schedule={schedule}
-                onMarkComplete={handleMarkTaskComplete}
-                onReorder={setSchedule}
-                userId={session?.user?.id}
-                completedTaskIds={completedTaskIds}
-              />
-            ) : (
-              <Card className="p-12 text-center bg-gradient-card border-border">
-                <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No Schedule Yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Add tasks and optimize your schedule to see it here
-                </p>
-                <Button onClick={() => setActiveTab("tasks")} className="bg-primary hover:bg-primary/90">
-                  <ListTodo className="w-4 h-4 mr-2" />
-                  Go to Tasks
-                </Button>
-              </Card>
-            )}
-
-            {/* Task History */}
-            {session && schedule.length === 0 && Object.keys(weeklySchedule).length === 0 && (
-              <TaskHistory userId={session.user.id} />
-            )}
+                  });
+                }
+                toast({
+                  title: "Task Completed!",
+                  description: `"${task.title}" has been marked as complete`,
+                });
+              }}
+            />
           </TabsContent>
 
           {/* Tasks Tab */}
