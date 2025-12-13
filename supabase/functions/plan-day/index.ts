@@ -12,8 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
-    console.log('Planning day for user:', userId);
+    const { userId, startTime } = await req.json();
+    console.log('Planning day for user:', userId, 'starting from:', startTime || '09:00');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -44,7 +44,12 @@ serve(async (req) => {
       .eq('user_id', userId)
       .eq('is_active', true);
 
-    const systemPrompt = `You are an AI day planner. Based on the user's task history and preferences, generate a list of tasks for today.
+    const startHour = startTime ? parseInt(startTime.split(':')[0]) : 9;
+    const remainingHours = Math.max(1, 22 - startHour); // Until 10 PM
+    
+    const systemPrompt = `You are an AI day planner. Based on the user's task history and preferences, generate a list of tasks for the rest of today starting from ${startTime || '09:00'}.
+    
+    IMPORTANT: The user is planning from ${startTime || '09:00'} onwards. They have approximately ${remainingHours} hours left in their workday (until ~10 PM).
     
     Analyze:
     - Common tasks from history
@@ -52,11 +57,13 @@ serve(async (req) => {
     - Usual priorities
     - Recurring patterns
     
-    Generate 5-8 tasks that:
+    Generate 3-6 tasks (fewer if starting late) that:
+    - Fit within the remaining ${remainingHours} hours
     - Match their typical workload
-    - Balance energy levels throughout the day
-    - Include variety (high, medium, low energy)
-    - Are realistic and achievable`;
+    - Balance energy levels for remaining day
+    - Are realistic and achievable for the time remaining
+    - Prioritize high-priority items if time is limited`;
+
 
     const userPrompt = `Task History (last 50 completed tasks):
 ${completedTasks?.map(t => `- ${t.task_title} (${t.energy_level} energy, ${t.priority} priority, ${t.task_duration}min)`).join('\n')}
@@ -68,7 +75,10 @@ User Preferences:
 - Max hours per day: ${preferences?.max_hours_per_day || 8}
 - Preferred deep work days: ${preferences?.preferred_deep_work_days?.join(', ') || 'Not set'}
 
-Generate a well-balanced task list for today.`;
+Current Time: ${startTime || '09:00'}
+Hours Remaining: ~${remainingHours} hours until 10 PM
+
+Generate a well-balanced task list for the rest of today, considering the limited time remaining.`;
 
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) throw new Error('LOVABLE_API_KEY not configured');

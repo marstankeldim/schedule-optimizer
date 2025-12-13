@@ -31,8 +31,14 @@ export const PlanMyDay = ({ userId, onTasksGenerated }: PlanMyDayProps) => {
   const handlePlanDay = async () => {
     setIsLoading(true);
     try {
+      // Get current time in user's timezone
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+      
       const { data, error } = await supabase.functions.invoke('plan-day', {
-        body: { userId },
+        body: { userId, startTime: currentTime },
       });
 
       if (error) throw error;
