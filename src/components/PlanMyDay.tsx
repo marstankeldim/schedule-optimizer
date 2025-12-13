@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Edit2, Check, X, Trash2 } from "lucide-react";
+import { Sparkles, Loader2, Edit2, Check, X, Trash2, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Task } from "@/components/TaskInput";
@@ -26,7 +26,27 @@ export const PlanMyDay = ({ userId, onTasksGenerated }: PlanMyDayProps) => {
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editedTask, setEditedTask] = useState<GeneratedTask | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const { toast } = useToast();
+
+  // Update current time every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getRemainingHours = () => {
+    const hours = currentTime.getHours();
+    const minutes = currentTime.getMinutes();
+    const remaining = Math.max(0, 22 - hours - (minutes / 60)); // Until 10 PM
+    return remaining.toFixed(1);
+  };
 
   const handlePlanDay = async () => {
     setIsLoading(true);
@@ -109,9 +129,15 @@ export const PlanMyDay = ({ userId, onTasksGenerated }: PlanMyDayProps) => {
             <Sparkles className="w-5 h-5 text-primary" />
             Plan My Day
           </h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            AI generates tasks based on your history
-          </p>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              <span>Now: <span className="font-medium text-foreground">{formatTime(currentTime)}</span></span>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              ~{getRemainingHours()}h remaining
+            </Badge>
+          </div>
         </div>
         <Button
           onClick={handlePlanDay}
