@@ -11,6 +11,7 @@ import { Task } from "@/components/TaskInput";
 
 interface PlanMyDayProps {
   userId: string;
+  existingTasks: Task[];
   onTasksGenerated: (tasks: Task[]) => void;
 }
 
@@ -21,7 +22,7 @@ interface GeneratedTask {
   priority: "low" | "medium" | "high";
 }
 
-export const PlanMyDay = ({ userId, onTasksGenerated }: PlanMyDayProps) => {
+export const PlanMyDay = ({ userId, existingTasks, onTasksGenerated }: PlanMyDayProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -55,10 +56,18 @@ export const PlanMyDay = ({ userId, onTasksGenerated }: PlanMyDayProps) => {
       const now = new Date();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
-      const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+      const currentTimeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+      
+      // Prepare existing tasks for the AI
+      const tasksForAI = existingTasks.map(t => ({
+        title: t.title,
+        duration: t.duration,
+        energyLevel: t.energyLevel,
+        priority: t.priority,
+      }));
       
       const { data, error } = await supabase.functions.invoke('plan-day', {
-        body: { userId, startTime: currentTime },
+        body: { userId, startTime: currentTimeStr, existingTasks: tasksForAI },
       });
 
       if (error) throw error;

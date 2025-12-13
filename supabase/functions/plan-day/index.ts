@@ -12,8 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, startTime } = await req.json();
-    console.log('Planning day for user:', userId, 'starting from:', startTime || '09:00');
+    const { userId, startTime, existingTasks } = await req.json();
+    console.log('Planning day for user:', userId, 'starting from:', startTime || '09:00', 'existing tasks:', existingTasks?.length || 0);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -47,25 +47,38 @@ serve(async (req) => {
     const startHour = startTime ? parseInt(startTime.split(':')[0]) : 9;
     const remainingHours = Math.max(1, 22 - startHour); // Until 10 PM
     
-    const systemPrompt = `You are an AI day planner. Based on the user's task history and preferences, generate a list of tasks for the rest of today starting from ${startTime || '09:00'}.
+    // Calculate time already committed to existing tasks
+    const existingTasksTime = existingTasks?.reduce((sum: number, t: any) => sum + (t.duration || 0), 0) || 0;
+    const existingTasksHours = (existingTasksTime / 60).toFixed(1);
+    const availableHours = Math.max(0, remainingHours - (existingTasksTime / 60));
     
-    IMPORTANT: The user is planning from ${startTime || '09:00'} onwards. They have approximately ${remainingHours} hours left in their workday (until ~10 PM).
+    const systemPrompt = `You are an AI day planner. Based on the user's task history, preferences, and EXISTING TASKS they've already added, generate ADDITIONAL tasks for the rest of today starting from ${startTime || '09:00'}.
+    
+    IMPORTANT: 
+    - The user is planning from ${startTime || '09:00'} onwards
+    - They have approximately ${remainingHours} hours left in their workday (until ~10 PM)
+    - They already have ${existingTasks?.length || 0} tasks planned (${existingTasksHours} hours committed)
+    - Available time for new tasks: ~${availableHours.toFixed(1)} hours
     
     Analyze:
-    - Common tasks from history
+    - The existing tasks the user has already added (DO NOT duplicate these)
+    - Common tasks from their history
     - Typical energy levels
     - Usual priorities
     - Recurring patterns
     
-    Generate 3-6 tasks (fewer if starting late) that:
-    - Fit within the remaining ${remainingHours} hours
-    - Match their typical workload
-    - Balance energy levels for remaining day
-    - Are realistic and achievable for the time remaining
-    - Prioritize high-priority items if time is limited`;
+    Generate 2-5 ADDITIONAL tasks (fewer if time is limited) that:
+    - DO NOT duplicate any existing tasks
+    - Complement the existing tasks (e.g., if they have meetings, suggest prep or follow-up)
+    - Fit within the remaining ${availableHours.toFixed(1)} available hours
+    - Balance energy levels considering existing task energy requirements
+    - Are realistic and achievable for the time remaining`;
 
 
-    const userPrompt = `Task History (last 50 completed tasks):
+    const userPrompt = `${existingTasks?.length ? `EXISTING TASKS (already planned - DO NOT suggest these again):
+${existingTasks.map((t: any) => `- ${t.title} (${t.energyLevel} energy, ${t.priority} priority, ${t.duration}min)`).join('\n')}
+
+` : ''}Task History (last 50 completed tasks):
 ${completedTasks?.map(t => `- ${t.task_title} (${t.energy_level} energy, ${t.priority} priority, ${t.task_duration}min)`).join('\n')}
 
 ${recurringTasks?.length ? `Recurring Tasks:
@@ -77,9 +90,10 @@ User Preferences:
 
 Current Time: ${startTime || '09:00'}
 Hours Remaining: ~${remainingHours} hours until 10 PM
+Time Already Planned: ${existingTasksHours} hours
+Available for New Tasks: ~${availableHours.toFixed(1)} hours
 
-Generate a well-balanced task list for the rest of today, considering the limited time remaining.`;
-
+Generate ADDITIONAL tasks to complement the existing ones (not duplicates).`;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) throw new Error('LOVABLE_API_KEY not configured');
 
