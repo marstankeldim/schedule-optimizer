@@ -886,6 +886,47 @@ const Index = () => {
                   });
                 }
               }}
+              onTaskResize={(task, day, newDuration) => {
+                // Calculate new end time based on new duration
+                const [startHour, startMin] = task.startTime.split(":").map(Number);
+                const endMinutes = startHour * 60 + startMin + newDuration;
+                const endHour = Math.floor(endMinutes / 60);
+                const endMin = endMinutes % 60;
+                const newEndTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+
+                const updatedTask = { ...task, duration: newDuration, endTime: newEndTime };
+
+                if (Object.keys(weeklySchedule).length > 0) {
+                  setWeeklySchedule((prev) => {
+                    const updated = { ...prev };
+                    if (updated[day]) {
+                      updated[day] = updated[day].map(t => t.id === task.id ? updatedTask : t);
+                    }
+                    return updated;
+                  });
+                } else {
+                  setSchedule((prev) => 
+                    prev.map(t => t.id === task.id ? updatedTask : t)
+                  );
+                }
+              }}
+              onTaskDelete={(task, day) => {
+                if (Object.keys(weeklySchedule).length > 0) {
+                  setWeeklySchedule((prev) => {
+                    const updated = { ...prev };
+                    if (updated[day]) {
+                      updated[day] = updated[day].filter(t => t.id !== task.id);
+                    }
+                    return updated;
+                  });
+                } else {
+                  setSchedule((prev) => prev.filter(t => t.id !== task.id));
+                }
+                toast({
+                  title: "Task deleted",
+                  description: `"${task.title}" has been removed from the schedule`,
+                });
+              }}
             />
           </TabsContent>
 

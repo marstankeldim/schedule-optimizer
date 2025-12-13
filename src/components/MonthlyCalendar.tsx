@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, CheckCircle2, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, GripVertical, X } from "lucide-react";
 import { ScheduledTask } from "@/components/ScheduleTimeline";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,8 @@ interface WeekViewCalendarProps {
   onDayClick?: (date: Date) => void;
   onTaskComplete?: (task: ScheduledTask, day: string) => void;
   onTaskReschedule?: (task: ScheduledTask, fromDay: string, toDay: string, newStartTime: string) => void;
+  onTaskResize?: (task: ScheduledTask, day: string, newDuration: number) => void;
+  onTaskDelete?: (task: ScheduledTask, day: string) => void;
 }
 
 interface DraggableTaskProps {
@@ -24,13 +26,53 @@ interface DraggableTaskProps {
   position: { top: string; height: string };
   isCompleted: boolean;
   onComplete?: () => void;
+  onResize?: (newDuration: number) => void;
+  onDelete?: () => void;
 }
 
-const DraggableTask = ({ task, day, position, isCompleted, onComplete }: DraggableTaskProps) => {
+const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize, onDelete }: DraggableTaskProps) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${task.id}-${day}`,
     data: { task, day },
   });
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStartY, setResizeStartY] = useState(0);
+  const [initialHeight, setInitialHeight] = useState(0);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsResizing(true);
+    setResizeStartY(e.clientY);
+    setInitialHeight(parseFloat(position.height));
+  }, [position.height]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - resizeStartY;
+      const newHeight = Math.max(24, initialHeight + deltaY);
+      // Convert height back to duration (64px = 1 hour = 60 minutes)
+      const newDuration = Math.round((newHeight / 64) * 60 / 15) * 15; // Round to 15 min increments
+      if (newDuration >= 15 && newDuration <= 480) {
+        onResize?.(newDuration);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, resizeStartY, initialHeight, onResize]);
 
   return (
     <div
@@ -38,6 +80,7 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete }: Draggab
       className={cn(
         "absolute left-0.5 right-0.5 rounded-md px-1.5 py-1 overflow-hidden transition-all group",
         isDragging ? "opacity-50 z-50" : "hover:shadow-md",
+        isResizing && "z-50",
         task.isBreak
           ? "bg-accent/30 border border-accent/50"
           : isCompleted
@@ -74,7 +117,33 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete }: Draggab
             {task.startTime} - {task.endTime}
           </p>
         </div>
+        {/* Delete button */}
+        {!task.isBreak && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.();
+            }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-destructive/20 rounded"
+          >
+            <X className="w-3 h-3 text-destructive" />
+          </button>
+        )}
       </div>
+      
+      {/* Resize handle */}
+      {!task.isBreak && (
+        <div
+          onMouseDown={handleResizeStart}
+          className={cn(
+            "absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity",
+            "flex items-center justify-center",
+            isResizing && "opacity-100"
+          )}
+        >
+          <div className="w-8 h-1 bg-muted-foreground/50 rounded-full" />
+        </div>
+      )}
     </div>
   );
 };
@@ -111,6 +180,8 @@ export const MonthlyCalendar = ({
   completedTaskIds,
   onTaskComplete,
   onTaskReschedule,
+  onTaskResize,
+  onTaskDelete,
 }: WeekViewCalendarProps) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [activeTask, setActiveTask] = useState<{ task: ScheduledTask; day: string } | null>(null);
@@ -226,7 +297,7 @@ export const MonthlyCalendar = ({
           <h2 className="text-2xl font-bold text-foreground">
             {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
           </h2>
-          <p className="text-sm text-muted-foreground">Week {format(currentWeek, "w")} • Drag tasks to reschedule</p>
+          <p className="text-sm text-muted-foreground">Week {format(currentWeek, "w")} • Drag to move, resize from bottom</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setCurrentWeek(new Date())}>
@@ -335,6 +406,8 @@ export const MonthlyCalendar = ({
                           position={position}
                           isCompleted={isCompleted}
                           onComplete={() => onTaskComplete?.(task, dayName)}
+                          onResize={(newDuration) => onTaskResize?.(task, dayName, newDuration)}
+                          onDelete={() => onTaskDelete?.(task, dayName)}
                         />
                       );
                     })}
