@@ -942,6 +942,7 @@ const Index = () => {
                 {session?.user && (
                   <PlanMyDay
                     userId={session.user.id}
+                    existingTasks={tasks}
                     onTasksGenerated={(newTasks) => {
                       setTasks((prev) => [...prev, ...newTasks]);
                     }}
