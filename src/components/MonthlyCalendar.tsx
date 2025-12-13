@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,26 @@ export const MonthlyCalendar = ({
       height: `${Math.max((duration / 60) * 64, 24)}px`,
     };
   };
+
+  // Current time indicator
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const getCurrentTimePosition = () => {
+    const hours = currentTime.getHours();
+    const minutes = currentTime.getMinutes();
+    if (hours < 6 || hours >= 22) return null; // Outside visible range
+    const offset = (hours - 6) * 60 + minutes;
+    return `${(offset / 60) * 64}px`;
+  };
+
+  const currentTimeTop = getCurrentTimePosition();
 
   return (
     <Card className="p-6 bg-gradient-card border-border overflow-hidden">
@@ -156,6 +176,19 @@ export const MonthlyCalendar = ({
                       className="h-16 border-b border-border/50"
                     />
                   ))}
+
+                  {/* Current time indicator */}
+                  {isToday && currentTimeTop && (
+                    <div
+                      className="absolute left-0 right-0 z-20 pointer-events-none"
+                      style={{ top: currentTimeTop }}
+                    >
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 rounded-full bg-destructive -ml-1" />
+                        <div className="flex-1 h-0.5 bg-destructive" />
+                      </div>
+                    </div>
+                  )}
 
                   {/* Tasks */}
                   {tasks.map((task, idx) => {
