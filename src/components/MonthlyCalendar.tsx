@@ -53,9 +53,9 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaY = e.clientY - resizeStartY;
-      const newHeight = Math.max(24, initialHeight + deltaY);
-      // Convert height back to duration (64px = 1 hour = 60 minutes)
-      const newDuration = Math.round((newHeight / 64) * 60 / 15) * 15; // Round to 15 min increments
+      const newHeight = Math.max(40, initialHeight + deltaY);
+      // Convert height back to duration (80px = 1 hour = 60 minutes)
+      const newDuration = Math.round((newHeight / 80) * 60 / 15) * 15; // Round to 15 min increments
       if (newDuration >= 15 && newDuration <= 480) {
         onResize?.(newDuration);
       }
@@ -78,42 +78,42 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
     <div
       ref={setNodeRef}
       className={cn(
-        "absolute left-0.5 right-0.5 rounded-md px-1.5 py-1 overflow-hidden transition-all group",
-        isDragging ? "opacity-50 z-50" : "hover:shadow-md",
+        "absolute left-1 right-1 rounded-lg px-2 py-1.5 overflow-hidden transition-all group shadow-sm",
+        isDragging ? "opacity-50 z-50" : "hover:shadow-lg",
         isResizing && "z-50",
         task.isBreak
-          ? "bg-accent/30 border border-accent/50"
+          ? "bg-accent/40 border-2 border-accent/60"
           : isCompleted
-          ? "bg-green-500/20 border border-green-500/50"
+          ? "bg-green-500/30 border-2 border-green-500/60"
           : task.priority === "high"
-          ? "bg-destructive/20 border border-destructive/50"
+          ? "bg-destructive/30 border-2 border-destructive/60"
           : task.priority === "medium"
-          ? "bg-primary/20 border border-primary/50"
-          : "bg-secondary border border-border"
+          ? "bg-primary/30 border-2 border-primary/60"
+          : "bg-secondary border-2 border-border"
       )}
       style={position}
     >
-      <div className="flex items-start gap-1">
+      <div className="flex items-start gap-1.5">
         {!task.isBreak && (
           <div
             {...attributes}
             {...listeners}
             className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5"
           >
-            <GripVertical className="w-3 h-3 text-muted-foreground" />
+            <GripVertical className="w-4 h-4 text-muted-foreground" />
           </div>
         )}
         {isCompleted && (
-          <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0 mt-0.5" />
+          <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
         )}
         <div className="min-w-0 flex-1 cursor-pointer" onClick={onComplete}>
           <p className={cn(
-            "text-xs font-medium truncate",
+            "text-sm font-medium line-clamp-2",
             isCompleted && "line-through text-muted-foreground"
           )}>
             {task.title}
           </p>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {task.startTime} - {task.endTime}
           </p>
         </div>
@@ -124,9 +124,9 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
               e.stopPropagation();
               onDelete?.();
             }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-0.5 hover:bg-destructive/20 rounded"
+            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 p-1 hover:bg-destructive/20 rounded"
           >
-            <X className="w-3 h-3 text-destructive" />
+            <X className="w-4 h-4 text-destructive" />
           </button>
         )}
       </div>
@@ -136,12 +136,12 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
         <div
           onMouseDown={handleResizeStart}
           className={cn(
-            "absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity",
-            "flex items-center justify-center",
+            "absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity",
+            "flex items-center justify-center bg-gradient-to-t from-background/50 to-transparent",
             isResizing && "opacity-100"
           )}
         >
-          <div className="w-8 h-1 bg-muted-foreground/50 rounded-full" />
+          <div className="w-10 h-1.5 bg-muted-foreground/60 rounded-full" />
         </div>
       )}
     </div>
@@ -165,7 +165,7 @@ const DroppableSlot = ({ day, hour, children }: DroppableSlotProps) => {
     <div
       ref={setNodeRef}
       className={cn(
-        "h-16 border-b border-border/50 transition-colors",
+        "h-20 border-b border-border/50 transition-colors",
         isOver && "bg-primary/20"
       )}
     >
@@ -231,8 +231,8 @@ export const MonthlyCalendar = ({
     const duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
     
     return {
-      top: `${(startOffset / 60) * 64}px`,
-      height: `${Math.max((duration / 60) * 64, 24)}px`,
+      top: `${(startOffset / 60) * 80}px`,
+      height: `${Math.max((duration / 60) * 80, 40)}px`,
     };
   };
 
@@ -250,7 +250,7 @@ export const MonthlyCalendar = ({
     const minutes = currentTime.getMinutes();
     if (hours < 6 || hours >= 22) return null;
     const offset = (hours - 6) * 60 + minutes;
-    return `${(offset / 60) * 64}px`;
+    return `${(offset / 60) * 80}px`;
   };
 
   const currentTimeTop = getCurrentTimePosition();
@@ -313,12 +313,12 @@ export const MonthlyCalendar = ({
       </div>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        {/* Calendar Grid */}
-        <div className="overflow-auto max-h-[calc(100vh-280px)]">
-          <div className="min-w-[800px]">
+        {/* Calendar Grid - Scrollable container */}
+        <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+          <div style={{ minWidth: '1200px' }}>
             {/* Day Headers */}
-            <div className="grid grid-cols-8 gap-1 sticky top-0 bg-background z-10 pb-2">
-              <div className="w-16" />
+            <div className="grid gap-1 sticky top-0 bg-background z-10 pb-2" style={{ gridTemplateColumns: '60px repeat(7, minmax(150px, 1fr))' }}>
+              <div className="w-[60px]" />
               {days.map((day) => {
                 const isToday = isSameDay(day, new Date());
                 const tasks = getTasksForDay(day);
@@ -351,11 +351,11 @@ export const MonthlyCalendar = ({
             </div>
 
             {/* Time Grid */}
-            <div className="grid grid-cols-8 gap-1">
+            <div className="grid gap-1" style={{ gridTemplateColumns: '60px repeat(7, minmax(150px, 1fr))' }}>
               {/* Time Labels */}
-              <div className="w-16">
+              <div className="w-[60px]">
                 {timeSlots.map((hour) => (
-                  <div key={hour} className="h-16 text-xs text-muted-foreground pr-2 text-right">
+                  <div key={hour} className="h-20 text-xs text-muted-foreground pr-2 text-right flex items-start pt-1">
                     {format(new Date().setHours(hour, 0), "h a")}
                   </div>
                 ))}
