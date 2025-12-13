@@ -847,7 +847,44 @@ const Index = () => {
                 toast({
                   title: "Task Completed!",
                   description: `"${task.title}" has been marked as complete`,
-                });
+              });
+              }}
+              onTaskReschedule={(task, fromDay, toDay, newStartTime) => {
+                // Calculate new end time based on duration
+                const [startHour, startMin] = newStartTime.split(":").map(Number);
+                const endMinutes = startHour * 60 + startMin + task.duration;
+                const endHour = Math.floor(endMinutes / 60);
+                const endMin = endMinutes % 60;
+                const newEndTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+
+                const updatedTask = { ...task, startTime: newStartTime, endTime: newEndTime };
+
+                if (Object.keys(weeklySchedule).length > 0) {
+                  // Update weekly schedule
+                  setWeeklySchedule((prev) => {
+                    const updated = { ...prev };
+                    // Remove from old day
+                    if (updated[fromDay]) {
+                      updated[fromDay] = updated[fromDay].filter(t => t.id !== task.id);
+                    }
+                    // Add to new day
+                    if (!updated[toDay]) {
+                      updated[toDay] = [];
+                    }
+                    updated[toDay] = [...updated[toDay], updatedTask].sort((a, b) => 
+                      a.startTime.localeCompare(b.startTime)
+                    );
+                    return updated;
+                  });
+                } else {
+                  // Update daily schedule
+                  setSchedule((prev) => {
+                    const filtered = prev.filter(t => t.id !== task.id);
+                    return [...filtered, updatedTask].sort((a, b) => 
+                      a.startTime.localeCompare(b.startTime)
+                    );
+                  });
+                }
               }}
             />
           </TabsContent>
