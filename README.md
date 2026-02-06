@@ -1,77 +1,57 @@
-Do tasks more efficient than others using Schedule Optimizer by Ayan Ospan
+# Schedule Optimizer
 
+AI-powered task scheduling that adapts to your energy, priorities, and calendar. Add tasks, optimize your day or week, track progress, and get insights into how you work best.
 
+## Features
 
-Contact: ako5473@psu.edu
+- Optimize a daily or weekly schedule from your task list
+- Energy and priority-aware scheduling with automatic break placement
+- Calendar import (.ics) to avoid conflicts
+- Recurring tasks and quick task templates
+- Focus mode, completion celebrations, and streaks/achievements
+- Schedule history, analytics dashboards, and break adherence stats
+- Export schedules back to calendar (.ics)
+- Push/local notifications for breaks (Capacitor)
 
-## Project info
+## Tech Stack
 
-**URL**: https://lovable.dev/projects/eb695f51-e5af-4271-adcf-adc3834f8c88
+- Vite + React + TypeScript
+- Tailwind CSS + shadcn/ui + Radix UI
+- Supabase (auth, database, edge functions)
+- Capacitor (mobile + notifications)
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/eb695f51-e5af-4271-adcf-adc3834f8c88) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Getting Started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+By default the dev server runs at `http://127.0.0.1:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Environment Variables
 
-**Use GitHub Codespaces**
+Create a `.env` file in the project root with:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```sh
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+VITE_SUPABASE_PROJECT_ID=...
+```
 
-## What technologies are used for this project?
+## Scripts
 
-This project is built with:
+```sh
+npm run dev      # start dev server
+npm run build    # production build
+npm run preview  # preview production build
+npm run lint     # lint
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Supabase
 
-## How can I deploy this project?
+This repo includes Supabase migrations and edge functions in `supabase/`. The app calls edge functions for schedule optimization and planning.
 
-Simply open [Lovable](https://lovable.dev/projects/eb695f51-e5af-4271-adcf-adc3834f8c88) and click on Share -> Publish.
+## Contact
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Ayan Ospan — ako5473@psu.edu
