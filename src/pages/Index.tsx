@@ -1119,7 +1119,6 @@ const Index = () => {
                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 py-6 text-lg font-semibold"
                     onClick={() => {
                       handleOptimizeSchedule();
-                      setActiveTab("calendar");
                     }}
                     disabled={isOptimizing}
                   >
@@ -1162,9 +1161,6 @@ const Index = () => {
                 {session?.user && <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />}
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
-
         {/* Task Dependencies Dialog */}
         {selectedTaskForDependency && session?.user && (
           <TaskDependencies
