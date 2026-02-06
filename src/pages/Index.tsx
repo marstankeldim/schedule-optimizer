@@ -1161,6 +1161,7 @@ const Index = () => {
                 {session?.user && <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />}
               </div>
             </div>
+        </section>
         {/* Task Dependencies Dialog */}
         {selectedTaskForDependency && session?.user && (
           <TaskDependencies
