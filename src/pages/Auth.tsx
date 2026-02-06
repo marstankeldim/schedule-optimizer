@@ -282,14 +282,7 @@ const Auth = () => {
             </Button>
           </div>
           
-          <div className="mt-3 text-center space-y-1">
-            <p className="text-sm font-medium text-foreground">
-              🚀 Perfect for hackathon demos!
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Pre-loaded with tasks, recurring tasks, achievements, streaks & calendar events
-            </p>
-          </div>
+          <div className="mt-3 text-center space-y-1" />
         </div>
       </div>
     </div>
