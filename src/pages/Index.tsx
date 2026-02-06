@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -130,8 +131,12 @@ const Index = () => {
 
     const now = new Date();
     const currentTask = schedule.find((task) => {
-      const start = new Date(task.startTime);
-      const end = new Date(task.endTime);
+      const [startHour, startMin] = task.startTime.split(":").map(Number);
+      const [endHour, endMin] = task.endTime.split(":").map(Number);
+      const start = new Date(now);
+      const end = new Date(now);
+      start.setHours(startHour, startMin, 0, 0);
+      end.setHours(endHour, endMin, 0, 0);
       return now >= start && now <= end;
     });
 
@@ -149,8 +154,8 @@ const Index = () => {
 
     if (error) {
       console.error("Error loading tasks:", error);
-    } else if (data && data.length > 0) {
-      const loadedTasks = data.map((t: any) => ({
+    } else {
+      const loadedTasks = (data || []).map((t: any) => ({
         id: t.id,
         title: t.title,
         time: t.preferred_time || undefined,
@@ -210,7 +215,7 @@ const Index = () => {
         energyLevel: data.energy_level as "high" | "medium" | "low",
         priority: data.priority as "high" | "medium" | "low",
       };
-      setTasks([...tasks, task]);
+      setTasks((prev) => [...prev, task]);
 
       // Smart task insertion: If schedule exists, insert into free slots
       if (schedule.length > 0) {
@@ -263,6 +268,14 @@ const Index = () => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+  };
+
+  const getScheduleItemCount = (scheduleData: unknown): number => {
+    if (Array.isArray(scheduleData)) return scheduleData.length;
+    if (scheduleData && typeof scheduleData === "object") {
+      return Object.values(scheduleData).reduce((sum, day) => sum + (Array.isArray(day) ? day.length : 0), 0);
+    }
+    return 0;
   };
 
   const handleAddMultipleTasks = async (newTasks: Omit<Task, "id">[]) => {
@@ -766,7 +779,7 @@ const Index = () => {
                     <h3 className="font-medium text-foreground">{saved.name}</h3>
                     <p className="text-sm text-muted-foreground">
                       {new Date(saved.created_at).toLocaleDateString()} • Start: {saved.start_time} •{" "}
-                      {saved.schedule_data.length} items
+                      {getScheduleItemCount(saved.schedule_data)} items
                     </p>
                   </div>
                   <Button
@@ -796,8 +809,8 @@ const Index = () => {
               setCompletedTaskIds((prev) => new Set([...prev, task.id]));
               if (task.isBreak && session?.user) {
                 const [hours, minutes] = task.startTime.split(":").map(Number);
-                const today = new Date();
-                const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
+                const scheduledDate = new Date(day);
+                const scheduledTime = new Date(scheduledDate.setHours(hours, minutes, 0, 0));
                 let breakType = "regular";
                 if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
                   breakType = "hydration";
@@ -817,7 +830,7 @@ const Index = () => {
                     taken: true,
                     taken_at: new Date().toISOString(),
                     duration_minutes: task.duration,
-                    date: today.toISOString().split("T")[0],
+                    date: scheduledTime.toISOString().split("T")[0],
                   },
                   { onConflict: "user_id,break_title,scheduled_time" },
                 );
@@ -845,6 +858,8 @@ const Index = () => {
               });
             }}
             onTaskReschedule={(task, fromDay, toDay, newStartTime) => {
+              const fromDayName = format(fromDay, "EEEE");
+              const toDayName = format(toDay, "EEEE");
               // Calculate new end time based on duration
               const [startHour, startMin] = newStartTime.split(":").map(Number);
               const endMinutes = startHour * 60 + startMin + task.duration;
@@ -859,14 +874,14 @@ const Index = () => {
                 setWeeklySchedule((prev) => {
                   const updated = { ...prev };
                   // Remove from old day
-                  if (updated[fromDay]) {
-                    updated[fromDay] = updated[fromDay].filter((t) => t.id !== task.id);
+                  if (updated[fromDayName]) {
+                    updated[fromDayName] = updated[fromDayName].filter((t) => t.id !== task.id);
                   }
                   // Add to new day
-                  if (!updated[toDay]) {
-                    updated[toDay] = [];
+                  if (!updated[toDayName]) {
+                    updated[toDayName] = [];
                   }
-                  updated[toDay] = [...updated[toDay], updatedTask].sort((a, b) =>
+                  updated[toDayName] = [...updated[toDayName], updatedTask].sort((a, b) =>
                     a.startTime.localeCompare(b.startTime),
                   );
                   return updated;
@@ -880,6 +895,7 @@ const Index = () => {
               }
             }}
             onTaskResize={(task, day, newDuration) => {
+              const dayName = format(day, "EEEE");
               // Calculate new end time based on new duration
               const [startHour, startMin] = task.startTime.split(":").map(Number);
               const endMinutes = startHour * 60 + startMin + newDuration;
@@ -892,8 +908,8 @@ const Index = () => {
               if (Object.keys(weeklySchedule).length > 0) {
                 setWeeklySchedule((prev) => {
                   const updated = { ...prev };
-                  if (updated[day]) {
-                    updated[day] = updated[day].map((t) => (t.id === task.id ? updatedTask : t));
+                  if (updated[dayName]) {
+                    updated[dayName] = updated[dayName].map((t) => (t.id === task.id ? updatedTask : t));
                   }
                   return updated;
                 });
@@ -902,11 +918,12 @@ const Index = () => {
               }
             }}
             onTaskDelete={(task, day) => {
+              const dayName = format(day, "EEEE");
               if (Object.keys(weeklySchedule).length > 0) {
                 setWeeklySchedule((prev) => {
                   const updated = { ...prev };
-                  if (updated[day]) {
-                    updated[day] = updated[day].filter((t) => t.id !== task.id);
+                  if (updated[dayName]) {
+                    updated[dayName] = updated[dayName].filter((t) => t.id !== task.id);
                   }
                   return updated;
                 });

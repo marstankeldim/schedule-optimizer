@@ -14,15 +14,15 @@ interface WeekViewCalendarProps {
   dailySchedule: ScheduledTask[];
   completedTaskIds: Set<string>;
   onDayClick?: (date: Date) => void;
-  onTaskComplete?: (task: ScheduledTask, day: string) => void;
-  onTaskReschedule?: (task: ScheduledTask, fromDay: string, toDay: string, newStartTime: string) => void;
-  onTaskResize?: (task: ScheduledTask, day: string, newDuration: number) => void;
-  onTaskDelete?: (task: ScheduledTask, day: string) => void;
+  onTaskComplete?: (task: ScheduledTask, day: Date) => void;
+  onTaskReschedule?: (task: ScheduledTask, fromDay: Date, toDay: Date, newStartTime: string) => void;
+  onTaskResize?: (task: ScheduledTask, day: Date, newDuration: number) => void;
+  onTaskDelete?: (task: ScheduledTask, day: Date) => void;
 }
 
 interface DraggableTaskProps {
   task: ScheduledTask;
-  day: string;
+  day: Date;
   position: { top: string; height: string };
   isCompleted: boolean;
   onComplete?: () => void;
@@ -31,8 +31,9 @@ interface DraggableTaskProps {
 }
 
 const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize, onDelete }: DraggableTaskProps) => {
+  const dayKey = format(day, "yyyy-MM-dd");
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `${task.id}-${day}`,
+    id: `${task.id}-${dayKey}`,
     data: { task, day },
   });
 
@@ -155,10 +156,9 @@ interface DroppableSlotProps {
 }
 
 const DroppableSlot = ({ day, hour, children }: DroppableSlotProps) => {
-  const dayName = format(day, "EEEE");
   const { setNodeRef, isOver } = useDroppable({
-    id: `${dayName}-${hour}`,
-    data: { day: dayName, hour },
+    id: `${format(day, "yyyy-MM-dd")}-${hour}`,
+    data: { day, hour },
   });
 
   return (
@@ -184,7 +184,7 @@ export const MonthlyCalendar = ({
   onTaskDelete,
 }: WeekViewCalendarProps) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [activeTask, setActiveTask] = useState<{ task: ScheduledTask; day: string } | null>(null);
+  const [activeTask, setActiveTask] = useState<{ task: ScheduledTask; day: Date } | null>(null);
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -256,7 +256,7 @@ export const MonthlyCalendar = ({
   const currentTimeTop = getCurrentTimePosition();
 
   const handleDragStart = (event: DragStartEvent) => {
-    const { task, day } = event.active.data.current as { task: ScheduledTask; day: string };
+    const { task, day } = event.active.data.current as { task: ScheduledTask; day: Date };
     setActiveTask({ task, day });
   };
 
@@ -266,8 +266,8 @@ export const MonthlyCalendar = ({
 
     if (!over) return;
 
-    const { task, day: fromDay } = active.data.current as { task: ScheduledTask; day: string };
-    const { day: toDay, hour } = over.data.current as { day: string; hour: number };
+    const { task, day: fromDay } = active.data.current as { task: ScheduledTask; day: Date };
+    const { day: toDay, hour } = over.data.current as { day: Date; hour: number };
 
     if (task.isBreak) {
       toast({
@@ -284,7 +284,7 @@ export const MonthlyCalendar = ({
       onTaskReschedule?.(task, fromDay, toDay, newStartTime);
       toast({
         title: "Task rescheduled",
-        description: `${task.title} moved to ${toDay} at ${newStartTime}`,
+        description: `${task.title} moved to ${format(toDay, "EEEE")} at ${newStartTime}`,
       });
     }
   };
@@ -365,8 +365,6 @@ export const MonthlyCalendar = ({
               {days.map((day) => {
                 const tasks = getTasksForDay(day);
                 const isToday = isSameDay(day, new Date());
-                const dayName = format(day, "EEEE");
-
                 return (
                   <div
                     key={day.toISOString()}
@@ -405,9 +403,9 @@ export const MonthlyCalendar = ({
                           day={dayName}
                           position={position}
                           isCompleted={isCompleted}
-                          onComplete={() => onTaskComplete?.(task, dayName)}
-                          onResize={(newDuration) => onTaskResize?.(task, dayName, newDuration)}
-                          onDelete={() => onTaskDelete?.(task, dayName)}
+                          onComplete={() => onTaskComplete?.(task, day)}
+                          onResize={(newDuration) => onTaskResize?.(task, day, newDuration)}
+                          onDelete={() => onTaskDelete?.(task, day)}
                         />
                       );
                     })}
