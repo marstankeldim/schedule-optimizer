@@ -5,13 +5,12 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { TaskInput, Task } from "@/components/TaskInput";
 import { TaskTemplates } from "@/components/TaskTemplates";
 import { RecurringTasks } from "@/components/RecurringTasks";
 import { TaskDependencies } from "@/components/TaskDependencies";
 import { ScheduleTimeline, ScheduledTask } from "@/components/ScheduleTimeline";
-import { WeeklyCalendar } from "@/components/WeeklyCalendar";
 import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
@@ -51,7 +50,6 @@ import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { PlanMyDay } from "@/components/PlanMyDay";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<"calendar" | "tasks">("calendar");
   const [session, setSession] = useState<Session | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [schedule, setSchedule] = useState<ScheduledTask[]>([]);
@@ -784,42 +782,34 @@ const Index = () => {
           </Card>
         )}
 
-        {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "calendar" | "tasks")} className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="calendar" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Calendar
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="flex items-center gap-2">
-              <ListTodo className="w-4 h-4" />
-              Tasks
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Calendar Tab */}
-          <TabsContent value="calendar">
-            <MonthlyCalendar
-              weeklySchedule={weeklySchedule}
-              dailySchedule={schedule}
-              completedTaskIds={completedTaskIds}
-              onTaskComplete={(task, day) => {
-                setCompletedTaskIds((prev) => new Set([...prev, task.id]));
-                if (task.isBreak && session?.user) {
-                  const [hours, minutes] = task.startTime.split(":").map(Number);
-                  const today = new Date();
-                  const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
-                  let breakType = "regular";
-                  if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
-                    breakType = "hydration";
-                  } else if (
-                    task.title.toLowerCase().includes("breakfast") ||
-                    task.title.toLowerCase().includes("lunch") ||
-                    task.title.toLowerCase().includes("dinner")
-                  ) {
-                    breakType = "meal";
-                  }
-                  supabase.from("break_adherence").upsert({
+        {/* Main Calendar View */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-muted-foreground" />
+            <h2 className="text-2xl font-semibold text-foreground">Calendar</h2>
+          </div>
+          <MonthlyCalendar
+            weeklySchedule={weeklySchedule}
+            dailySchedule={schedule}
+            completedTaskIds={completedTaskIds}
+            onTaskComplete={(task, day) => {
+              setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+              if (task.isBreak && session?.user) {
+                const [hours, minutes] = task.startTime.split(":").map(Number);
+                const today = new Date();
+                const scheduledTime = new Date(today.setHours(hours, minutes, 0, 0));
+                let breakType = "regular";
+                if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
+                  breakType = "hydration";
+                } else if (
+                  task.title.toLowerCase().includes("breakfast") ||
+                  task.title.toLowerCase().includes("lunch") ||
+                  task.title.toLowerCase().includes("dinner")
+                ) {
+                  breakType = "meal";
+                }
+                supabase.from("break_adherence").upsert(
+                  {
                     user_id: session.user.id,
                     break_type: breakType,
                     break_title: task.title,
@@ -828,111 +818,118 @@ const Index = () => {
                     taken_at: new Date().toISOString(),
                     duration_minutes: task.duration,
                     date: today.toISOString().split("T")[0],
-                  }, { onConflict: "user_id,break_title,scheduled_time" });
-                }
-                if (!task.isBreak && session?.user) {
-                  supabase.from("completed_tasks").insert({
+                  },
+                  { onConflict: "user_id,break_title,scheduled_time" },
+                );
+              }
+              if (!task.isBreak && session?.user) {
+                supabase
+                  .from("completed_tasks")
+                  .insert({
                     user_id: session.user.id,
                     task_title: task.title,
                     task_duration: task.duration,
                     energy_level: task.energyLevel,
                     priority: task.priority,
-                  }).then(({ error }) => {
+                  })
+                  .then(({ error }) => {
                     if (!error) {
                       checkAndUpdateGoals();
                       checkTaskCompletionAchievements(new Date());
                     }
                   });
-                }
-                toast({
-                  title: "Task Completed!",
-                  description: `"${task.title}" has been marked as complete`,
+              }
+              toast({
+                title: "Task Completed!",
+                description: `"${task.title}" has been marked as complete`,
               });
-              }}
-              onTaskReschedule={(task, fromDay, toDay, newStartTime) => {
-                // Calculate new end time based on duration
-                const [startHour, startMin] = newStartTime.split(":").map(Number);
-                const endMinutes = startHour * 60 + startMin + task.duration;
-                const endHour = Math.floor(endMinutes / 60);
-                const endMin = endMinutes % 60;
-                const newEndTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+            }}
+            onTaskReschedule={(task, fromDay, toDay, newStartTime) => {
+              // Calculate new end time based on duration
+              const [startHour, startMin] = newStartTime.split(":").map(Number);
+              const endMinutes = startHour * 60 + startMin + task.duration;
+              const endHour = Math.floor(endMinutes / 60);
+              const endMin = endMinutes % 60;
+              const newEndTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
 
-                const updatedTask = { ...task, startTime: newStartTime, endTime: newEndTime };
+              const updatedTask = { ...task, startTime: newStartTime, endTime: newEndTime };
 
-                if (Object.keys(weeklySchedule).length > 0) {
-                  // Update weekly schedule
-                  setWeeklySchedule((prev) => {
-                    const updated = { ...prev };
-                    // Remove from old day
-                    if (updated[fromDay]) {
-                      updated[fromDay] = updated[fromDay].filter(t => t.id !== task.id);
-                    }
-                    // Add to new day
-                    if (!updated[toDay]) {
-                      updated[toDay] = [];
-                    }
-                    updated[toDay] = [...updated[toDay], updatedTask].sort((a, b) => 
-                      a.startTime.localeCompare(b.startTime)
-                    );
-                    return updated;
-                  });
-                } else {
-                  // Update daily schedule
-                  setSchedule((prev) => {
-                    const filtered = prev.filter(t => t.id !== task.id);
-                    return [...filtered, updatedTask].sort((a, b) => 
-                      a.startTime.localeCompare(b.startTime)
-                    );
-                  });
-                }
-              }}
-              onTaskResize={(task, day, newDuration) => {
-                // Calculate new end time based on new duration
-                const [startHour, startMin] = task.startTime.split(":").map(Number);
-                const endMinutes = startHour * 60 + startMin + newDuration;
-                const endHour = Math.floor(endMinutes / 60);
-                const endMin = endMinutes % 60;
-                const newEndTime = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
-
-                const updatedTask = { ...task, duration: newDuration, endTime: newEndTime };
-
-                if (Object.keys(weeklySchedule).length > 0) {
-                  setWeeklySchedule((prev) => {
-                    const updated = { ...prev };
-                    if (updated[day]) {
-                      updated[day] = updated[day].map(t => t.id === task.id ? updatedTask : t);
-                    }
-                    return updated;
-                  });
-                } else {
-                  setSchedule((prev) => 
-                    prev.map(t => t.id === task.id ? updatedTask : t)
+              if (Object.keys(weeklySchedule).length > 0) {
+                // Update weekly schedule
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  // Remove from old day
+                  if (updated[fromDay]) {
+                    updated[fromDay] = updated[fromDay].filter((t) => t.id !== task.id);
+                  }
+                  // Add to new day
+                  if (!updated[toDay]) {
+                    updated[toDay] = [];
+                  }
+                  updated[toDay] = [...updated[toDay], updatedTask].sort((a, b) =>
+                    a.startTime.localeCompare(b.startTime),
                   );
-                }
-              }}
-              onTaskDelete={(task, day) => {
-                if (Object.keys(weeklySchedule).length > 0) {
-                  setWeeklySchedule((prev) => {
-                    const updated = { ...prev };
-                    if (updated[day]) {
-                      updated[day] = updated[day].filter(t => t.id !== task.id);
-                    }
-                    return updated;
-                  });
-                } else {
-                  setSchedule((prev) => prev.filter(t => t.id !== task.id));
-                }
-                toast({
-                  title: "Task deleted",
-                  description: `"${task.title}" has been removed from the schedule`,
+                  return updated;
                 });
-              }}
-            />
-          </TabsContent>
+              } else {
+                // Update daily schedule
+                setSchedule((prev) => {
+                  const filtered = prev.filter((t) => t.id !== task.id);
+                  return [...filtered, updatedTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                });
+              }
+            }}
+            onTaskResize={(task, day, newDuration) => {
+              // Calculate new end time based on new duration
+              const [startHour, startMin] = task.startTime.split(":").map(Number);
+              const endMinutes = startHour * 60 + startMin + newDuration;
+              const endHour = Math.floor(endMinutes / 60);
+              const endMin = endMinutes % 60;
+              const newEndTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
 
-          {/* Tasks Tab */}
-          <TabsContent value="tasks" className="space-y-6">
-            <div className="grid lg:grid-cols-3 gap-8">
+              const updatedTask = { ...task, duration: newDuration, endTime: newEndTime };
+
+              if (Object.keys(weeklySchedule).length > 0) {
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  if (updated[day]) {
+                    updated[day] = updated[day].map((t) => (t.id === task.id ? updatedTask : t));
+                  }
+                  return updated;
+                });
+              } else {
+                setSchedule((prev) => prev.map((t) => (t.id === task.id ? updatedTask : t)));
+              }
+            }}
+            onTaskDelete={(task, day) => {
+              if (Object.keys(weeklySchedule).length > 0) {
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  if (updated[day]) {
+                    updated[day] = updated[day].filter((t) => t.id !== task.id);
+                  }
+                  return updated;
+                });
+              } else {
+                setSchedule((prev) => prev.filter((t) => t.id !== task.id));
+              }
+              toast({
+                title: "Task deleted",
+                description: `"${task.title}" has been removed from the schedule`,
+              });
+            }}
+          />
+        </section>
+
+        <Separator className="my-10" />
+
+        {/* Tasks & Planning */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <ListTodo className="w-5 h-5 text-muted-foreground" />
+            <h2 className="text-2xl font-semibold text-foreground">Tasks</h2>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-8">
               {/* Left Column - Input */}
               <div className="lg:col-span-2 space-y-6">
                 <div>
