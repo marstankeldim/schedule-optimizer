@@ -711,12 +711,13 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <header className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full">
-              <Calendar className="w-8 h-8 text-primary" />
+    <div className="h-screen overflow-hidden bg-background">
+      <div className="container mx-auto h-full px-4 pt-3 pb-2 max-w-7xl">
+        <header className="mb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-semibold text-foreground">Calendar</h2>
+              <Calendar className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="flex gap-2">
               <Button
@@ -752,11 +753,11 @@ const Index = () => {
             <div className="rounded-md border border-border bg-secondary/40 p-2 mb-2">
               <div className="flex items-center gap-2">
                 {session?.user?.user_metadata?.avatar_url ? (
-                  <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden border border-border">
+                  <div className="relative h-8 min-h-8 w-8 min-w-8 shrink-0 overflow-hidden rounded-full border border-border">
                     <img
                       src={session.user.user_metadata.avatar_url}
                       alt="Profile"
-                      className="h-full w-full object-cover"
+                      className="absolute inset-0 block h-full w-full object-cover"
                     />
                   </div>
                 ) : (
@@ -994,11 +995,7 @@ const Index = () => {
           </div>
         )}
 
-        <main className="space-y-6 ml-[140px]">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-2xl font-semibold text-foreground">Calendar</h2>
-            </div>
+        <main className="space-y-3 ml-[140px]">
             <MonthlyCalendar
               weeklySchedule={weeklySchedule}
               dailySchedule={schedule}
