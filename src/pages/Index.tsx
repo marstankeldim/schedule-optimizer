@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -855,6 +855,52 @@ const Index = () => {
               toast({
                 title: "Task Completed!",
                 description: `"${task.title}" has been marked as complete`,
+              });
+            }}
+            onTaskCreate={(day, startTime, duration) => {
+              const [startHour, startMin] = startTime.split(":").map(Number);
+              const endMinutesTotal = startHour * 60 + startMin + duration;
+              const endHour = Math.floor(endMinutesTotal / 60);
+              const endMin = endMinutesTotal % 60;
+              const endTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
+
+              const newTask: ScheduledTask = {
+                id: crypto.randomUUID(),
+                title: "New Event",
+                duration,
+                energyLevel: "medium",
+                priority: "medium",
+                startTime,
+                endTime,
+              };
+
+              if (Object.keys(weeklySchedule).length > 0) {
+                const dayName = format(day, "EEEE");
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  if (!updated[dayName]) updated[dayName] = [];
+                  updated[dayName] = [...updated[dayName], newTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                  return updated;
+                });
+              } else {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                if (!isSameDay(day, tomorrow)) {
+                  toast({
+                    title: "Daily mode limit",
+                    description: "In Tomorrow mode, events can only be created on tomorrow's column.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                setSchedule((prev) => [...prev, newTask].sort((a, b) => a.startTime.localeCompare(b.startTime)));
+              }
+
+              toast({
+                title: "Event created",
+                description: `${startTime} - ${endTime} (${duration} min)`,
               });
             }}
             onTaskReschedule={(task, fromDay, toDay, newStartTime) => {

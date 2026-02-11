@@ -18,6 +18,7 @@ interface WeekViewCalendarProps {
   onTaskReschedule?: (task: ScheduledTask, fromDay: Date, toDay: Date, newStartTime: string) => void;
   onTaskResize?: (task: ScheduledTask, day: Date, newDuration: number) => void;
   onTaskDelete?: (task: ScheduledTask, day: Date) => void;
+  onTaskCreate?: (day: Date, startTime: string, duration: number) => void;
 }
 
 interface DraggableTaskProps {
@@ -56,8 +57,8 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
       const deltaY = e.clientY - resizeStartY;
       const newHeight = Math.max(40, initialHeight + deltaY);
       // Convert height back to duration (80px = 1 hour = 60 minutes)
-      const newDuration = Math.round((newHeight / 80) * 60 / 15) * 15; // Round to 15 min increments
-      if (newDuration >= 15 && newDuration <= 480) {
+      const newDuration = Math.round((newHeight / PIXELS_PER_HOUR) * 60 / SNAP_MINUTES) * SNAP_MINUTES;
+      if (newDuration >= SNAP_MINUTES && newDuration <= 480) {
         onResize?.(newDuration);
       }
     };
@@ -78,6 +79,7 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
   return (
     <div
       ref={setNodeRef}
+      data-task-card="true"
       className={cn(
         "absolute left-1 right-1 rounded-lg px-2 py-1.5 overflow-hidden transition-all group shadow-sm",
         isDragging ? "opacity-50 z-50" : "hover:shadow-lg",
@@ -136,6 +138,7 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
       {!task.isBreak && (
         <div
           onMouseDown={handleResizeStart}
+          data-no-create="true"
           className={cn(
             "absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity",
             "flex items-center justify-center bg-gradient-to-t from-background/50 to-transparent",
@@ -154,6 +157,35 @@ interface DroppableSlotProps {
   hour: number;
   children?: React.ReactNode;
 }
+
+interface CreationDraft {
+  day: Date;
+  containerTop: number;
+  containerHeight: number;
+  startMinutes: number;
+  currentMinutes: number;
+}
+
+const START_HOUR = 6;
+const PIXELS_PER_HOUR = 80;
+const SNAP_MINUTES = 5;
+const TOTAL_VISIBLE_MINUTES = 17 * 60;
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const snapToFiveMinutes = (minutes: number) => Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+
+const minutesFromOffsetToTime = (minutesFromStart: number) => {
+  const totalMinutes = START_HOUR * 60 + minutesFromStart;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+};
+
+const pointerYToMinutes = (clientY: number, top: number, height: number) => {
+  const y = clamp(clientY - top, 0, height);
+  const rawMinutes = (y / PIXELS_PER_HOUR) * 60;
+  return clamp(snapToFiveMinutes(rawMinutes), 0, TOTAL_VISIBLE_MINUTES);
+};
 
 const DroppableSlot = ({ day, hour, children }: DroppableSlotProps) => {
   const { setNodeRef, isOver } = useDroppable({
@@ -182,9 +214,11 @@ export const MonthlyCalendar = ({
   onTaskReschedule,
   onTaskResize,
   onTaskDelete,
+  onTaskCreate,
 }: WeekViewCalendarProps) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [activeTask, setActiveTask] = useState<{ task: ScheduledTask; day: Date } | null>(null);
+  const [creationDraft, setCreationDraft] = useState<CreationDraft | null>(null);
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -221,18 +255,18 @@ export const MonthlyCalendar = ({
   const handlePrevWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const handleNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
-  const timeSlots = Array.from({ length: 17 }, (_, i) => i + 6);
+  const timeSlots = Array.from({ length: 17 }, (_, i) => i + START_HOUR);
 
   const getTaskPosition = (task: ScheduledTask) => {
     const [startHour, startMin] = task.startTime.split(":").map(Number);
     const [endHour, endMin] = task.endTime.split(":").map(Number);
     
-    const startOffset = (startHour - 6) * 60 + startMin;
+    const startOffset = (startHour - START_HOUR) * 60 + startMin;
     const duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
     
     return {
-      top: `${(startOffset / 60) * 80}px`,
-      height: `${Math.max((duration / 60) * 80, 40)}px`,
+      top: `${(startOffset / 60) * PIXELS_PER_HOUR}px`,
+      height: `${Math.max((duration / 60) * PIXELS_PER_HOUR, 40)}px`,
     };
   };
 
@@ -248,13 +282,63 @@ export const MonthlyCalendar = ({
   const getCurrentTimePosition = () => {
     const hours = currentTime.getHours();
     const minutes = currentTime.getMinutes();
-    if (hours < 6 || hours >= 22) return null;
-    const offset = (hours - 6) * 60 + minutes;
-    return `${(offset / 60) * 80}px`;
+    if (hours < START_HOUR || hours >= 22) return null;
+    const offset = (hours - START_HOUR) * 60 + minutes;
+    return `${(offset / 60) * PIXELS_PER_HOUR}px`;
   };
 
   const currentTimeTop = getCurrentTimePosition();
   const calendarGridColumns = '56px repeat(7, minmax(0, 1fr))';
+
+  useEffect(() => {
+    if (!creationDraft) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      setCreationDraft((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          currentMinutes: pointerYToMinutes(event.clientY, prev.containerTop, prev.containerHeight),
+        };
+      });
+    };
+
+    const handleMouseUp = () => {
+      setCreationDraft((prev) => {
+        if (!prev) return null;
+        const startMinutes = Math.min(prev.startMinutes, prev.currentMinutes);
+        const endMinutes = Math.max(prev.startMinutes, prev.currentMinutes);
+        const duration = Math.max(SNAP_MINUTES, endMinutes - startMinutes);
+        onTaskCreate?.(prev.day, minutesFromOffsetToTime(startMinutes), duration);
+        return null;
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [creationDraft, onTaskCreate]);
+
+  const startCreateDraft = (event: React.MouseEvent<HTMLDivElement>, day: Date) => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-task-card='true']") || target.closest("[data-no-create='true']")) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const startMinutes = pointerYToMinutes(event.clientY, rect.top, rect.height);
+
+    setCreationDraft({
+      day,
+      containerTop: rect.top,
+      containerHeight: rect.height,
+      startMinutes,
+      currentMinutes: startMinutes,
+    });
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     const { task, day } = event.active.data.current as { task: ScheduledTask; day: Date };
@@ -370,9 +454,10 @@ export const MonthlyCalendar = ({
                   <div
                     key={day.toISOString()}
                     className={cn(
-                      "relative border-l border-border",
+                      "relative border-l border-border select-none",
                       isToday && "bg-primary/5"
                     )}
+                    onMouseDown={(event) => startCreateDraft(event, day)}
                   >
                     {/* Droppable Hour slots */}
                     {timeSlots.map((hour) => (
@@ -392,6 +477,28 @@ export const MonthlyCalendar = ({
                       </div>
                     )}
 
+                    {creationDraft && isSameDay(day, creationDraft.day) && (() => {
+                      const startMinutes = Math.min(creationDraft.startMinutes, creationDraft.currentMinutes);
+                      const endMinutes = Math.max(creationDraft.startMinutes, creationDraft.currentMinutes);
+                      const duration = Math.max(SNAP_MINUTES, endMinutes - startMinutes);
+                      const top = (startMinutes / 60) * PIXELS_PER_HOUR;
+                      const height = Math.max((duration / 60) * PIXELS_PER_HOUR, 8);
+                      const startTime = minutesFromOffsetToTime(startMinutes);
+                      const endTime = minutesFromOffsetToTime(startMinutes + duration);
+
+                      return (
+                        <div
+                          className="absolute left-1 right-1 z-30 rounded-lg border-2 border-dashed border-primary bg-primary/20 px-2 py-1 pointer-events-none"
+                          style={{ top: `${top}px`, height: `${height}px` }}
+                        >
+                          <p className="text-[11px] font-semibold text-foreground">New Event</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {startTime} - {endTime} ({duration}m)
+                          </p>
+                        </div>
+                      );
+                    })()}
+
                     {/* Tasks */}
                     {tasks.map((task, idx) => {
                       const position = getTaskPosition(task);
@@ -401,7 +508,7 @@ export const MonthlyCalendar = ({
                         <DraggableTask
                           key={task.id + idx}
                           task={task}
-                          day={dayName}
+                          day={day}
                           position={position}
                           isCompleted={isCompleted}
                           onComplete={() => onTaskComplete?.(task, day)}
