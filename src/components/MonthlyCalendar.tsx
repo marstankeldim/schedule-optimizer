@@ -147,16 +147,6 @@ const DraggableTask = ({
             {task.startTime} - {task.endTime}
           </p>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onComplete?.();
-          }}
-          className="shrink-0 p-1 rounded hover:bg-primary/20 text-primary"
-          title="Mark complete"
-        >
-          <CheckCircle2 className="w-4 h-4" />
-        </button>
         {/* Delete button */}
         {!task.isBreak && (
           <button
@@ -170,6 +160,17 @@ const DraggableTask = ({
           </button>
         )}
       </div>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onComplete?.();
+        }}
+        className="absolute bottom-3 right-1 z-10 shrink-0 p-1 rounded hover:bg-primary/20 text-primary"
+        title="Mark complete"
+      >
+        <CheckCircle2 className="w-4 h-4" />
+      </button>
       
       {/* Resize handle */}
       {!task.isBreak && (
