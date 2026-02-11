@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { TaskInput, Task } from "@/components/TaskInput";
 import { TaskTemplates } from "@/components/TaskTemplates";
 import { RecurringTasks } from "@/components/RecurringTasks";
@@ -16,6 +17,7 @@ import { GoalsSidebar } from "@/components/GoalsSidebar";
 import { TaskHistory } from "@/components/TaskHistory";
 import { CalendarImport } from "@/components/CalendarImport";
 import { FocusMode } from "@/components/FocusMode";
+import { AIInsights } from "@/components/AIInsights";
 import { SchedulePreferences } from "@/components/SchedulePreferences";
 import { WeeklyOptimizationSettings } from "@/components/WeeklyOptimizationSettings";
 import { WorkloadBalanceChart } from "@/components/WorkloadBalanceChart";
@@ -702,6 +704,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
         <header className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full">
@@ -724,6 +727,26 @@ const Index = () => {
                 <Sparkles className="w-4 h-4 mr-2" />
                 AI Insights
               </Button>
+              {savedSchedules.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="bg-secondary hover:bg-secondary/80 border-border"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  History ({savedSchedules.length})
+                </Button>
+              )}
+              {!notificationsEnabled && (
+                <Button
+                  variant="outline"
+                  onClick={checkPermissions}
+                  className="bg-accent/10 hover:bg-accent/20 border-accent/30"
+                >
+                  <Bell className="w-4 h-4 mr-2" />
+                  Enable Break Alerts
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={handleLogout}
@@ -742,445 +765,466 @@ const Index = () => {
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)] items-start">
-          <aside className="space-y-6 lg:sticky lg:top-4 max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
-            <Card className="p-4 bg-gradient-card border-border shadow-card">
-              <div className="flex flex-col gap-2">
-                {savedSchedules.length > 0 && (
+        {/* History View */}
+        {showHistory && savedSchedules.length > 0 && (
+          <Card className="p-6 bg-gradient-card border-border shadow-card mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Schedule History</h2>
+            <div className="space-y-2">
+              {savedSchedules.map((saved) => (
+                <div
+                  key={saved.id}
+                  className="p-4 bg-secondary rounded-lg border border-border flex items-center justify-between"
+                >
+                  <div>
+                    <h3 className="font-medium text-foreground">{saved.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(saved.created_at).toLocaleDateString()} • Start: {saved.start_time} •{" "}
+                      {getScheduleItemCount(saved.schedule_data)} items
+                    </p>
+                  </div>
                   <Button
-                    variant="outline"
-                    onClick={() => setShowHistory(!showHistory)}
-                    className="bg-secondary hover:bg-secondary/80 border-border justify-start"
+                    size="sm"
+                    onClick={() => handleLoadSchedule(saved)}
+                    className="bg-primary hover:bg-primary/90"
                   >
-                    <History className="w-4 h-4 mr-2" />
-                    {showHistory ? "Hide History" : `History (${savedSchedules.length})`}
+                    Load
                   </Button>
-                )}
-                {!notificationsEnabled && (
-                  <Button
-                    variant="outline"
-                    onClick={checkPermissions}
-                    className="bg-accent/10 hover:bg-accent/20 border-accent/30 justify-start"
-                  >
-                    <Bell className="w-4 h-4 mr-2" />
-                    Enable Break Alerts
-                  </Button>
-                )}
-              </div>
-            </Card>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
-            {showHistory && savedSchedules.length > 0 && (
-              <Card className="p-6 bg-gradient-card border-border shadow-card">
-                <h2 className="text-2xl font-semibold text-foreground mb-4">Schedule History</h2>
-                <div className="space-y-2">
-                  {savedSchedules.map((saved) => (
-                    <div
-                      key={saved.id}
-                      className="p-4 bg-secondary rounded-lg border border-border flex items-center justify-between"
-                    >
-                      <div>
-                        <h3 className="font-medium text-foreground">{saved.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(saved.created_at).toLocaleDateString()} • Start: {saved.start_time} •{" "}
-                          {getScheduleItemCount(saved.schedule_data)} items
-                        </p>
-                      </div>
+        {/* Main Calendar View */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-muted-foreground" />
+            <h2 className="text-2xl font-semibold text-foreground">Calendar</h2>
+          </div>
+          <MonthlyCalendar
+            weeklySchedule={weeklySchedule}
+            dailySchedule={schedule}
+            completedTaskIds={completedTaskIds}
+            onTaskComplete={(task, day) => {
+              setCompletedTaskIds((prev) => new Set([...prev, task.id]));
+              if (task.isBreak && session?.user) {
+                const [hours, minutes] = task.startTime.split(":").map(Number);
+                const scheduledDate = new Date(day);
+                const scheduledTime = new Date(scheduledDate.setHours(hours, minutes, 0, 0));
+                let breakType = "regular";
+                if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
+                  breakType = "hydration";
+                } else if (
+                  task.title.toLowerCase().includes("breakfast") ||
+                  task.title.toLowerCase().includes("lunch") ||
+                  task.title.toLowerCase().includes("dinner")
+                ) {
+                  breakType = "meal";
+                }
+                supabase.from("break_adherence").upsert(
+                  {
+                    user_id: session.user.id,
+                    break_type: breakType,
+                    break_title: task.title,
+                    scheduled_time: scheduledTime.toISOString(),
+                    taken: true,
+                    taken_at: new Date().toISOString(),
+                    duration_minutes: task.duration,
+                    date: scheduledTime.toISOString().split("T")[0],
+                  },
+                  { onConflict: "user_id,break_title,scheduled_time" },
+                );
+              }
+              if (!task.isBreak && session?.user) {
+                supabase
+                  .from("completed_tasks")
+                  .insert({
+                    user_id: session.user.id,
+                    task_title: task.title,
+                    task_duration: task.duration,
+                    energy_level: task.energyLevel,
+                    priority: task.priority,
+                  })
+                  .then(({ error }) => {
+                    if (!error) {
+                      checkAndUpdateGoals();
+                      checkTaskCompletionAchievements(new Date());
+                    }
+                  });
+              }
+              toast({
+                title: "Task Completed!",
+                description: `"${task.title}" has been marked as complete`,
+              });
+            }}
+            onTaskCreate={(day, startTime, duration) => {
+              const [startHour, startMin] = startTime.split(":").map(Number);
+              const endMinutesTotal = startHour * 60 + startMin + duration;
+              const endHour = Math.floor(endMinutesTotal / 60);
+              const endMin = endMinutesTotal % 60;
+              const endTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
+
+              const newTask: ScheduledTask = {
+                id: crypto.randomUUID(),
+                title: "New Event",
+                duration,
+                energyLevel: "medium",
+                priority: "medium",
+                startTime,
+                endTime,
+              };
+
+              if (Object.keys(weeklySchedule).length > 0) {
+                const dayName = format(day, "EEEE");
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  if (!updated[dayName]) updated[dayName] = [];
+                  updated[dayName] = [...updated[dayName], newTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                  return updated;
+                });
+              } else {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                if (!isSameDay(day, tomorrow)) {
+                  toast({
+                    title: "Daily mode limit",
+                    description: "In Tomorrow mode, events can only be created on tomorrow's column.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                setSchedule((prev) => [...prev, newTask].sort((a, b) => a.startTime.localeCompare(b.startTime)));
+              }
+
+              toast({
+                title: "Event created",
+                description: `${startTime} - ${endTime} (${duration} min)`,
+              });
+            }}
+            onTaskReschedule={(task, fromDay, toDay, newStartTime) => {
+              const fromDayName = format(fromDay, "EEEE");
+              const toDayName = format(toDay, "EEEE");
+              // Calculate new end time based on duration
+              const [startHour, startMin] = newStartTime.split(":").map(Number);
+              const endMinutes = startHour * 60 + startMin + task.duration;
+              const endHour = Math.floor(endMinutes / 60);
+              const endMin = endMinutes % 60;
+              const newEndTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
+
+              const updatedTask = { ...task, startTime: newStartTime, endTime: newEndTime };
+
+              if (Object.keys(weeklySchedule).length > 0) {
+                // Update weekly schedule
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  // Remove from old day
+                  if (updated[fromDayName]) {
+                    updated[fromDayName] = updated[fromDayName].filter((t) => t.id !== task.id);
+                  }
+                  // Add to new day
+                  if (!updated[toDayName]) {
+                    updated[toDayName] = [];
+                  }
+                  updated[toDayName] = [...updated[toDayName], updatedTask].sort((a, b) =>
+                    a.startTime.localeCompare(b.startTime),
+                  );
+                  return updated;
+                });
+              } else {
+                // Update daily schedule
+                setSchedule((prev) => {
+                  const filtered = prev.filter((t) => t.id !== task.id);
+                  return [...filtered, updatedTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                });
+              }
+            }}
+            onTaskResize={(task, day, newDuration) => {
+              const dayName = format(day, "EEEE");
+              // Calculate new end time based on new duration
+              const [startHour, startMin] = task.startTime.split(":").map(Number);
+              const endMinutes = startHour * 60 + startMin + newDuration;
+              const endHour = Math.floor(endMinutes / 60);
+              const endMin = endMinutes % 60;
+              const newEndTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
+
+              const updatedTask = { ...task, duration: newDuration, endTime: newEndTime };
+
+              if (Object.keys(weeklySchedule).length > 0) {
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  if (updated[dayName]) {
+                    updated[dayName] = updated[dayName].map((t) => (t.id === task.id ? updatedTask : t));
+                  }
+                  return updated;
+                });
+              } else {
+                setSchedule((prev) => prev.map((t) => (t.id === task.id ? updatedTask : t)));
+              }
+            }}
+            onTaskDelete={(task, day) => {
+              const dayName = format(day, "EEEE");
+              if (Object.keys(weeklySchedule).length > 0) {
+                setWeeklySchedule((prev) => {
+                  const updated = { ...prev };
+                  if (updated[dayName]) {
+                    updated[dayName] = updated[dayName].filter((t) => t.id !== task.id);
+                  }
+                  return updated;
+                });
+              } else {
+                setSchedule((prev) => prev.filter((t) => t.id !== task.id));
+              }
+              toast({
+                title: "Task deleted",
+                description: `"${task.title}" has been removed from the schedule`,
+              });
+            }}
+          />
+        </section>
+
+        <Separator className="my-10" />
+
+        {/* Tasks & Planning */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <ListTodo className="w-5 h-5 text-muted-foreground" />
+            <h2 className="text-2xl font-semibold text-foreground">Tasks</h2>
+          </div>
+          <div className="grid lg:grid-cols-3 gap-8">
+              {/* Left Column - Input */}
+              <div className="lg:col-span-2 space-y-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-foreground mb-4">Add Your Tasks</h2>
+
+                  {/* Planning Period Selector */}
+                  <Card className="p-4 mb-4">
+                    <Label className="text-sm font-medium mb-3 block">Planning Period</Label>
+                    <div className="flex gap-2">
                       <Button
-                        size="sm"
-                        onClick={() => handleLoadSchedule(saved)}
-                        className="bg-primary hover:bg-primary/90"
+                        type="button"
+                        variant={planningPeriod === "tomorrow" ? "default" : "outline"}
+                        onClick={() => setPlanningPeriod("tomorrow")}
+                        className="flex-1"
                       >
-                        Load
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Tomorrow
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={planningPeriod === "week" ? "default" : "outline"}
+                        onClick={() => setPlanningPeriod("week")}
+                        className="flex-1"
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Whole Week
                       </Button>
                     </div>
-                  ))}
+
+                    {/* Workdays Selector */}
+                    {planningPeriod === "week" && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <Label className="text-sm font-medium mb-3 block">Workdays</Label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                            <Button
+                              key={day}
+                              type="button"
+                              variant={workdays.includes(day) ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                setWorkdays((prev) =>
+                                  prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+                                );
+                              }}
+                              className="text-xs"
+                            >
+                              {day.slice(0, 3)}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+
+                  <TaskInput
+                    onAddTask={handleAddTask}
+                    userId={session?.user?.id}
+                    onRecurringCreated={() => setRecurringTasksKey((prev) => prev + 1)}
+                  />
                 </div>
-              </Card>
-            )}
 
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
-                <ListTodo className="w-5 h-5 text-muted-foreground" />
-                <h2 className="text-2xl font-semibold text-foreground">Menu</h2>
-              </div>
+                {/* Task Templates */}
+                <TaskTemplates onSelectTemplate={handleAddTask} />
 
-              <Card className="p-4">
-                <Label className="text-sm font-medium mb-3 block">Planning Period</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={planningPeriod === "tomorrow" ? "default" : "outline"}
-                    onClick={() => setPlanningPeriod("tomorrow")}
-                    className="flex-1"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Tomorrow
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={planningPeriod === "week" ? "default" : "outline"}
-                    onClick={() => setPlanningPeriod("week")}
-                    className="flex-1"
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    Whole Week
-                  </Button>
-                </div>
+                {/* Recurring Tasks */}
+                {session?.user && (
+                  <RecurringTasks key={recurringTasksKey} userId={session.user.id} onTasksGenerated={loadTasks} />
+                )}
 
-                {planningPeriod === "week" && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <Label className="text-sm font-medium mb-3 block">Workdays</Label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
-                        <Button
-                          key={day}
-                          type="button"
-                          variant={workdays.includes(day) ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            setWorkdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
-                          }}
-                          className="text-xs"
+                {/* Calendar Import */}
+                {session?.user && (
+                  <CalendarImport
+                    userId={session.user.id}
+                    onEventsImported={() => {
+                      toast({
+                        title: "Calendar updated",
+                        description: "Your schedule optimization will now consider your calendar events",
+                      });
+                    }}
+                  />
+                )}
+
+                {/* Plan My Day */}
+                {session?.user && (
+                  <PlanMyDay
+                    userId={session.user.id}
+                    existingTasks={tasks}
+                    onTasksGenerated={(newTasks) => {
+                      setTasks((prev) => [...prev, ...newTasks]);
+                    }}
+                  />
+                )}
+
+                {/* Task List */}
+                {tasks.length > 0 && (
+                  <Card className="p-6 bg-gradient-card border-border shadow-card">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-foreground">Tasks ({tasks.length})</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearTasks}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Clear All
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="p-3 bg-secondary rounded-lg border border-border flex items-center justify-between"
                         >
-                          {day.slice(0, 3)}
-                        </Button>
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">{task.title}</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {task.time ? `${task.time} • ` : ""}
+                              {task.duration}min • {task.energyLevel} energy • {task.priority} priority
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedTaskForDependency(task);
+                              setDependencyDialogOpen(true);
+                            }}
+                            className="hover:bg-primary/10 hover:text-primary"
+                          >
+                            <GitBranch className="w-4 h-4" />
+                          </Button>
+                        </div>
                       ))}
                     </div>
-                  </div>
+                  </Card>
                 )}
-              </Card>
 
-              <TaskInput
-                onAddTask={handleAddTask}
-                userId={session?.user?.id}
-                onRecurringCreated={() => setRecurringTasksKey((prev) => prev + 1)}
-              />
+                {/* Start Time & Break Preferences */}
+                {tasks.length > 0 && (
+                  <Card className="p-6 bg-gradient-card border-border shadow-card space-y-4">
+                    <div>
+                      <Label htmlFor="startTime" className="text-foreground flex items-center gap-2 mb-3">
+                        <Clock className="w-4 h-4 text-primary" />
+                        What time does your day start?
+                      </Label>
+                      <Input
+                        id="startTime"
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="bg-secondary border-border focus:border-primary transition-colors"
+                      />
+                    </div>
 
-              <TaskTemplates onSelectTemplate={handleAddTask} />
-
-              {session?.user && <RecurringTasks key={recurringTasksKey} userId={session.user.id} onTasksGenerated={loadTasks} />}
-
-              {session?.user && (
-                <CalendarImport
-                  userId={session.user.id}
-                  onEventsImported={() => {
-                    toast({
-                      title: "Calendar updated",
-                      description: "Your schedule optimization will now consider your calendar events",
-                    });
-                  }}
-                />
-              )}
-
-              {session?.user && (
-                <PlanMyDay
-                  userId={session.user.id}
-                  existingTasks={tasks}
-                  onTasksGenerated={(newTasks) => {
-                    setTasks((prev) => [...prev, ...newTasks]);
-                  }}
-                />
-              )}
-
-              {tasks.length > 0 && (
-                <Card className="p-6 bg-gradient-card border-border shadow-card">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-foreground">Tasks ({tasks.length})</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearTasks}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Clear All
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="p-3 bg-secondary rounded-lg border border-border flex items-center justify-between"
+                    <div>
+                      <Label htmlFor="breaks" className="text-foreground flex items-center gap-2 mb-3">
+                        <Coffee className="w-4 h-4 text-primary" />
+                        Break preferences
+                      </Label>
+                      <Select
+                        value={breakPreference}
+                        onValueChange={(v) => setBreakPreference(v as typeof breakPreference)}
                       >
-                        <div className="flex-1">
-                          <p className="font-medium text-foreground">{task.title}</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {task.time ? `${task.time} • ` : ""}
-                            {task.duration}min • {task.energyLevel} energy • {task.priority} priority
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedTaskForDependency(task);
-                            setDependencyDialogOpen(true);
-                          }}
-                          className="hover:bg-primary/10 hover:text-primary"
-                        >
-                          <GitBranch className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
+                        <SelectTrigger id="breaks" className="bg-secondary border-border focus:border-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No breaks</SelectItem>
+                          <SelectItem value="short">Short breaks (5-10 min)</SelectItem>
+                          <SelectItem value="long">Long breaks (30+ min)</SelectItem>
+                          <SelectItem value="auto">Auto (AI decides based on energy)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Breaks help prevent burnout and maintain productivity
+                      </p>
+                    </div>
+                  </Card>
+                )}
 
-              {tasks.length > 0 && (
-                <Card className="p-6 bg-gradient-card border-border shadow-card space-y-4">
-                  <div>
-                    <Label htmlFor="startTime" className="text-foreground flex items-center gap-2 mb-3">
-                      <Clock className="w-4 h-4 text-primary" />
-                      What time does your day start?
-                    </Label>
-                    <Input
-                      id="startTime"
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      className="bg-secondary border-border focus:border-primary transition-colors"
-                    />
-                  </div>
+                {/* Optimize Button */}
+                {tasks.length > 0 && (
+                  <Button
+                    size="lg"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 py-6 text-lg font-semibold"
+                    onClick={() => {
+                      handleOptimizeSchedule();
+                    }}
+                    disabled={isOptimizing}
+                  >
+                    {isOptimizing ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                        Optimizing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        Optimize My Schedule
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
 
-                  <div>
-                    <Label htmlFor="breaks" className="text-foreground flex items-center gap-2 mb-3">
-                      <Coffee className="w-4 h-4 text-primary" />
-                      Break preferences
-                    </Label>
-                    <Select value={breakPreference} onValueChange={(v) => setBreakPreference(v as typeof breakPreference)}>
-                      <SelectTrigger id="breaks" className="bg-secondary border-border focus:border-primary">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No breaks</SelectItem>
-                        <SelectItem value="short">Short breaks (5-10 min)</SelectItem>
-                        <SelectItem value="long">Long breaks (30+ min)</SelectItem>
-                        <SelectItem value="auto">Auto (AI decides based on energy)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground mt-2">Breaks help prevent burnout and maintain productivity</p>
-                  </div>
-                </Card>
-              )}
+              {/* Right Sidebar */}
+              <div className="space-y-6">
+                {/* Schedule Preferences */}
+                {session?.user && <SchedulePreferences userId={session.user.id} />}
 
-              {tasks.length > 0 && (
-                <Button
-                  size="lg"
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 py-6 text-lg font-semibold"
-                  onClick={handleOptimizeSchedule}
-                  disabled={isOptimizing}
-                >
-                  {isOptimizing ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
-                      Optimizing...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      Optimize My Schedule
-                    </>
-                  )}
-                </Button>
-              )}
+                {/* Streak Tracker */}
+                <StreakTracker currentStreak={currentStreak} longestStreak={longestStreak} loading={streakLoading} />
 
-              {session?.user && <SchedulePreferences userId={session.user.id} />}
-              <StreakTracker currentStreak={currentStreak} longestStreak={longestStreak} loading={streakLoading} />
-              {session?.user && <Achievements userId={session.user.id} currentStreak={currentStreak} />}
-              {session?.user && <MentalHealthRewards userId={session.user.id} />}
-              {session?.user && planningPeriod === "week" && <WeeklyOptimizationSettings userId={session.user.id} />}
-              {session?.user && <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />}
-              {session?.user && <TaskHistory userId={session.user.id} />}
-              {Object.keys(weeklySchedule).length > 0 && <WorkloadBalanceChart weeklySchedule={weeklySchedule} />}
+                {/* Achievements */}
+                {session?.user && <Achievements userId={session.user.id} currentStreak={currentStreak} />}
+
+                {/* Mental Health Rewards */}
+                {session?.user && <MentalHealthRewards userId={session.user.id} />}
+
+                {/* AI Insights */}
+                {session?.user && <AIInsights userId={session.user.id} />}
+
+                {/* Weekly Optimization Settings */}
+                {session?.user && planningPeriod === "week" && <WeeklyOptimizationSettings userId={session.user.id} />}
+
+                {/* Goals Sidebar */}
+                {session?.user && <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />}
+              </div>
             </div>
-          </aside>
-
-          <main className="space-y-6">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-muted-foreground" />
-              <h2 className="text-2xl font-semibold text-foreground">Calendar</h2>
-            </div>
-            <MonthlyCalendar
-              weeklySchedule={weeklySchedule}
-              dailySchedule={schedule}
-              completedTaskIds={completedTaskIds}
-              onTaskComplete={(task, day) => {
-                setCompletedTaskIds((prev) => new Set([...prev, task.id]));
-                if (task.isBreak && session?.user) {
-                  const [hours, minutes] = task.startTime.split(":").map(Number);
-                  const scheduledDate = new Date(day);
-                  const scheduledTime = new Date(scheduledDate.setHours(hours, minutes, 0, 0));
-                  let breakType = "regular";
-                  if (task.title.toLowerCase().includes("hydration") || task.title.includes("💧")) {
-                    breakType = "hydration";
-                  } else if (
-                    task.title.toLowerCase().includes("breakfast") ||
-                    task.title.toLowerCase().includes("lunch") ||
-                    task.title.toLowerCase().includes("dinner")
-                  ) {
-                    breakType = "meal";
-                  }
-                  supabase.from("break_adherence").upsert(
-                    {
-                      user_id: session.user.id,
-                      break_type: breakType,
-                      break_title: task.title,
-                      scheduled_time: scheduledTime.toISOString(),
-                      taken: true,
-                      taken_at: new Date().toISOString(),
-                      duration_minutes: task.duration,
-                      date: scheduledTime.toISOString().split("T")[0],
-                    },
-                    { onConflict: "user_id,break_title,scheduled_time" },
-                  );
-                }
-                if (!task.isBreak && session?.user) {
-                  supabase
-                    .from("completed_tasks")
-                    .insert({
-                      user_id: session.user.id,
-                      task_title: task.title,
-                      task_duration: task.duration,
-                      energy_level: task.energyLevel,
-                      priority: task.priority,
-                    })
-                    .then(({ error }) => {
-                      if (!error) {
-                        checkAndUpdateGoals();
-                        checkTaskCompletionAchievements(new Date());
-                      }
-                    });
-                }
-                toast({
-                  title: "Task Completed!",
-                  description: `"${task.title}" has been marked as complete`,
-                });
-              }}
-              onTaskCreate={(day, startTime, duration) => {
-                const [startHour, startMin] = startTime.split(":").map(Number);
-                const endMinutesTotal = startHour * 60 + startMin + duration;
-                const endHour = Math.floor(endMinutesTotal / 60);
-                const endMin = endMinutesTotal % 60;
-                const endTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
-
-                const newTask: ScheduledTask = {
-                  id: crypto.randomUUID(),
-                  title: "New Event",
-                  duration,
-                  energyLevel: "medium",
-                  priority: "medium",
-                  startTime,
-                  endTime,
-                };
-
-                if (Object.keys(weeklySchedule).length > 0) {
-                  const dayName = format(day, "EEEE");
-                  setWeeklySchedule((prev) => {
-                    const updated = { ...prev };
-                    if (!updated[dayName]) updated[dayName] = [];
-                    updated[dayName] = [...updated[dayName], newTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
-                    return updated;
-                  });
-                } else {
-                  const tomorrow = new Date();
-                  tomorrow.setDate(tomorrow.getDate() + 1);
-                  const tomorrowDayName = format(tomorrow, "EEEE");
-                  const targetDayName = format(day, "EEEE");
-
-                  if (isSameDay(day, tomorrow)) {
-                    setSchedule((prev) => [...prev, newTask].sort((a, b) => a.startTime.localeCompare(b.startTime)));
-                  } else {
-                    const seededWeeklySchedule: Record<string, ScheduledTask[]> = {
-                      [tomorrowDayName]: [...schedule],
-                    };
-                    seededWeeklySchedule[targetDayName] = [...(seededWeeklySchedule[targetDayName] || []), newTask].sort((a, b) =>
-                      a.startTime.localeCompare(b.startTime),
-                    );
-                    setWeeklySchedule(seededWeeklySchedule);
-                  }
-                }
-
-                toast({
-                  title: "Event created",
-                  description: `${startTime} - ${endTime} (${duration} min)`,
-                });
-              }}
-              onTaskReschedule={(task, fromDay, toDay, newStartTime) => {
-                const fromDayName = format(fromDay, "EEEE");
-                const toDayName = format(toDay, "EEEE");
-                const [startHour, startMin] = newStartTime.split(":").map(Number);
-                const endMinutes = startHour * 60 + startMin + task.duration;
-                const endHour = Math.floor(endMinutes / 60);
-                const endMin = endMinutes % 60;
-                const newEndTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
-
-                const updatedTask = { ...task, startTime: newStartTime, endTime: newEndTime };
-
-                if (Object.keys(weeklySchedule).length > 0) {
-                  setWeeklySchedule((prev) => {
-                    const updated = { ...prev };
-                    if (updated[fromDayName]) {
-                      updated[fromDayName] = updated[fromDayName].filter((t) => t.id !== task.id);
-                    }
-                    if (!updated[toDayName]) {
-                      updated[toDayName] = [];
-                    }
-                    updated[toDayName] = [...updated[toDayName], updatedTask].sort((a, b) =>
-                      a.startTime.localeCompare(b.startTime),
-                    );
-                    return updated;
-                  });
-                } else {
-                  setSchedule((prev) => {
-                    const filtered = prev.filter((t) => t.id !== task.id);
-                    return [...filtered, updatedTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
-                  });
-                }
-              }}
-              onTaskResize={(task, day, newDuration) => {
-                const dayName = format(day, "EEEE");
-                const [startHour, startMin] = task.startTime.split(":").map(Number);
-                const endMinutes = startHour * 60 + startMin + newDuration;
-                const endHour = Math.floor(endMinutes / 60);
-                const endMin = endMinutes % 60;
-                const newEndTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
-
-                const updatedTask = { ...task, duration: newDuration, endTime: newEndTime };
-
-                if (Object.keys(weeklySchedule).length > 0) {
-                  setWeeklySchedule((prev) => {
-                    const updated = { ...prev };
-                    if (updated[dayName]) {
-                      updated[dayName] = updated[dayName].map((t) => (t.id === task.id ? updatedTask : t));
-                    }
-                    return updated;
-                  });
-                } else {
-                  setSchedule((prev) => prev.map((t) => (t.id === task.id ? updatedTask : t)));
-                }
-              }}
-              onTaskDelete={(task, day) => {
-                const dayName = format(day, "EEEE");
-                if (Object.keys(weeklySchedule).length > 0) {
-                  setWeeklySchedule((prev) => {
-                    const updated = { ...prev };
-                    if (updated[dayName]) {
-                      updated[dayName] = updated[dayName].filter((t) => t.id !== task.id);
-                    }
-                    return updated;
-                  });
-                } else {
-                  setSchedule((prev) => prev.filter((t) => t.id !== task.id));
-                }
-                toast({
-                  title: "Task deleted",
-                  description: `"${task.title}" has been removed from the schedule`,
-                });
-              }}
-            />
-          </main>
-        </div>
-
+        </section>
         {/* Task Dependencies Dialog */}
         {selectedTaskForDependency && session?.user && (
           <TaskDependencies
