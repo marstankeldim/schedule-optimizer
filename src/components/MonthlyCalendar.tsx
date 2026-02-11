@@ -4,6 +4,9 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, us
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, CheckCircle2, GripVertical, X } from "lucide-react";
 import { ScheduledTask } from "@/components/ScheduleTimeline";
 import { cn } from "@/lib/utils";
@@ -18,20 +21,22 @@ interface WeekViewCalendarProps {
   onTaskReschedule?: (task: ScheduledTask, fromDay: Date, toDay: Date, newStartTime: string) => void;
   onTaskResize?: (task: ScheduledTask, day: Date, newDuration: number) => void;
   onTaskDelete?: (task: ScheduledTask, day: Date) => void;
-  onTaskCreate?: (day: Date, startTime: string, duration: number) => void;
+  onTaskCreate?: (day: Date, startTime: string, duration: number, title?: string) => void;
+  onTaskUpdate?: (task: ScheduledTask, day: Date, updates: Partial<ScheduledTask>) => void;
 }
 
 interface DraggableTaskProps {
   task: ScheduledTask;
   day: Date;
-  position: { top: string; height: string };
+  position: { top: string; height: string; left: string; width: string };
   isCompleted: boolean;
   onComplete?: () => void;
   onResize?: (newDuration: number) => void;
   onDelete?: () => void;
+  onOpenProperties?: () => void;
 }
 
-const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize, onDelete }: DraggableTaskProps) => {
+const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize, onDelete, onOpenProperties }: DraggableTaskProps) => {
   const dayKey = format(day, "yyyy-MM-dd");
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${task.id}-${dayKey}`,
@@ -81,7 +86,7 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
       ref={setNodeRef}
       data-task-card="true"
       className={cn(
-        "absolute left-1 right-1 rounded-lg px-2 py-1.5 overflow-hidden transition-all group shadow-sm",
+        "absolute rounded-lg px-2 py-1.5 overflow-hidden transition-all group shadow-sm",
         isDragging ? "opacity-50 z-50" : "hover:shadow-lg",
         isResizing && "z-50",
         task.isBreak
@@ -95,6 +100,10 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
           : "bg-secondary border-2 border-border"
       )}
       style={position}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onOpenProperties?.();
+      }}
     >
       <div className="flex items-start gap-1.5">
         {!task.isBreak && (
@@ -109,7 +118,7 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
         {isCompleted && (
           <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
         )}
-        <div className="min-w-0 flex-1 cursor-pointer" onClick={onComplete}>
+        <div className="min-w-0 flex-1">
           <p className={cn(
             "text-sm font-medium line-clamp-2",
             isCompleted && "line-through text-muted-foreground"
@@ -120,6 +129,16 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
             {task.startTime} - {task.endTime}
           </p>
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onComplete?.();
+          }}
+          className="shrink-0 p-1 rounded hover:bg-primary/20 text-primary"
+          title="Mark complete"
+        >
+          <CheckCircle2 className="w-4 h-4" />
+        </button>
         {/* Delete button */}
         {!task.isBreak && (
           <button
@@ -166,6 +185,14 @@ interface CreationDraft {
   currentMinutes: number;
 }
 
+interface EventDraft {
+  title: string;
+  startTime: string;
+  duration: number;
+  recurring: boolean;
+  additionalTasks: string;
+}
+
 const START_HOUR = 6;
 const PIXELS_PER_HOUR = 80;
 const SNAP_MINUTES = 5;
@@ -181,10 +208,63 @@ const minutesFromOffsetToTime = (minutesFromStart: number) => {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 };
 
+const timeToMinutes = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+const minutesToTime = (totalMinutes: number) => {
+  const bounded = clamp(totalMinutes, START_HOUR * 60, 22 * 60);
+  const hours = Math.floor(bounded / 60);
+  const minutes = bounded % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+};
+
 const pointerYToMinutes = (clientY: number, top: number, height: number) => {
   const y = clamp(clientY - top, 0, height);
   const rawMinutes = (y / PIXELS_PER_HOUR) * 60;
   return clamp(snapToFiveMinutes(rawMinutes), 0, TOTAL_VISIBLE_MINUTES);
+};
+
+const computeDayLayout = (tasks: ScheduledTask[]) => {
+  const indexed = tasks.map((task, index) => ({
+    index,
+    start: timeToMinutes(task.startTime),
+    end: timeToMinutes(task.endTime),
+    column: 0,
+    maxColumns: 1,
+  })).sort((a, b) => (a.start - b.start) || (a.end - b.end));
+
+  const active: typeof indexed = [];
+
+  indexed.forEach((item) => {
+    for (let i = active.length - 1; i >= 0; i--) {
+      if (active[i].end <= item.start) active.splice(i, 1);
+    }
+
+    const usedColumns = new Set(active.map((a) => a.column));
+    let column = 0;
+    while (usedColumns.has(column)) column += 1;
+    item.column = column;
+    active.push(item);
+
+    const concurrent = active.length;
+    active.forEach((a) => {
+      a.maxColumns = Math.max(a.maxColumns, concurrent);
+    });
+  });
+
+  const layout = new Map<number, { left: string; width: string }>();
+  indexed.forEach((item) => {
+    const widthPct = 100 / item.maxColumns;
+    const leftPct = item.column * widthPct;
+    layout.set(item.index, {
+      left: `calc(${leftPct}% + 2px)`,
+      width: `calc(${widthPct}% - 4px)`,
+    });
+  });
+
+  return layout;
 };
 
 const DroppableSlot = ({ day, hour, children }: DroppableSlotProps) => {
@@ -215,10 +295,19 @@ export const MonthlyCalendar = ({
   onTaskResize,
   onTaskDelete,
   onTaskCreate,
+  onTaskUpdate,
 }: WeekViewCalendarProps) => {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [activeTask, setActiveTask] = useState<{ task: ScheduledTask; day: Date } | null>(null);
   const [creationDraft, setCreationDraft] = useState<CreationDraft | null>(null);
+  const [editingEvent, setEditingEvent] = useState<{ task: ScheduledTask; day: Date } | null>(null);
+  const [eventDraft, setEventDraft] = useState<EventDraft>({
+    title: "",
+    startTime: "09:00",
+    duration: 30,
+    recurring: false,
+    additionalTasks: "",
+  });
   const { toast } = useToast();
 
   const sensors = useSensors(
@@ -267,6 +356,8 @@ export const MonthlyCalendar = ({
     return {
       top: `${(startOffset / 60) * PIXELS_PER_HOUR}px`,
       height: `${Math.max((duration / 60) * PIXELS_PER_HOUR, 40)}px`,
+      left: "2px",
+      width: "calc(100% - 4px)",
     };
   };
 
@@ -289,6 +380,51 @@ export const MonthlyCalendar = ({
 
   const currentTimeTop = getCurrentTimePosition();
   const calendarGridColumns = '56px repeat(7, minmax(0, 1fr))';
+
+  const openPropertiesDialog = (task: ScheduledTask, day: Date) => {
+    setEditingEvent({ task, day });
+    setEventDraft({
+      title: task.title,
+      startTime: task.startTime,
+      duration: task.duration,
+      recurring: Boolean(task.recurringTaskId),
+      additionalTasks: "",
+    });
+  };
+
+  const handleSaveEventProperties = () => {
+    if (!editingEvent) return;
+
+    const { task, day } = editingEvent;
+    const title = eventDraft.title.trim() || task.title;
+    const duration = clamp(snapToFiveMinutes(eventDraft.duration || task.duration), SNAP_MINUTES, 480);
+    const startTime = eventDraft.startTime;
+
+    if (startTime !== task.startTime) {
+      onTaskReschedule?.(task, day, day, startTime);
+    }
+    if (duration !== task.duration) {
+      onTaskResize?.(task, day, duration);
+    }
+
+    const recurringTaskId = eventDraft.recurring ? (task.recurringTaskId || `manual-${task.id}`) : undefined;
+    onTaskUpdate?.(task, day, { title, recurringTaskId });
+
+    const additional = eventDraft.additionalTasks
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (additional.length > 0) {
+      const baseStart = timeToMinutes(startTime) + duration;
+      additional.forEach((line, idx) => {
+        const extraStart = minutesToTime(baseStart + idx * duration);
+        onTaskCreate?.(day, extraStart, duration, line);
+      });
+    }
+
+    setEditingEvent(null);
+  };
 
   useEffect(() => {
     if (!creationDraft) return;
@@ -449,6 +585,7 @@ export const MonthlyCalendar = ({
               {/* Day Columns */}
               {days.map((day) => {
                 const tasks = getTasksForDay(day);
+                const dayLayout = computeDayLayout(tasks);
                 const isToday = isSameDay(day, new Date());
                 return (
                   <div
@@ -501,7 +638,12 @@ export const MonthlyCalendar = ({
 
                     {/* Tasks */}
                     {tasks.map((task, idx) => {
-                      const position = getTaskPosition(task);
+                      const layout = dayLayout.get(idx);
+                      const position = {
+                        ...getTaskPosition(task),
+                        left: layout?.left || "2px",
+                        width: layout?.width || "calc(100% - 4px)",
+                      };
                       const isCompleted = completedTaskIds.has(task.id);
 
                       return (
@@ -514,6 +656,7 @@ export const MonthlyCalendar = ({
                           onComplete={() => onTaskComplete?.(task, day)}
                           onResize={(newDuration) => onTaskResize?.(task, day, newDuration)}
                           onDelete={() => onTaskDelete?.(task, day)}
+                          onOpenProperties={() => openPropertiesDialog(task, day)}
                         />
                       );
                     })}
@@ -546,6 +689,75 @@ export const MonthlyCalendar = ({
           )}
         </DragOverlay>
       </DndContext>
+
+      <Dialog open={Boolean(editingEvent)} onOpenChange={(open) => !open && setEditingEvent(null)}>
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="event-title">Name</Label>
+              <Input
+                id="event-title"
+                value={eventDraft.title}
+                onChange={(e) => setEventDraft((prev) => ({ ...prev, title: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="event-time">Start Time</Label>
+                <Input
+                  id="event-time"
+                  type="time"
+                  value={eventDraft.startTime}
+                  onChange={(e) => setEventDraft((prev) => ({ ...prev, startTime: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="event-duration">Duration (min)</Label>
+                <Input
+                  id="event-duration"
+                  type="number"
+                  min={SNAP_MINUTES}
+                  step={SNAP_MINUTES}
+                  value={eventDraft.duration}
+                  onChange={(e) => setEventDraft((prev) => ({ ...prev, duration: Number(e.target.value) || SNAP_MINUTES }))}
+                />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={eventDraft.recurring}
+                onChange={(e) => setEventDraft((prev) => ({ ...prev, recurring: e.target.checked }))}
+              />
+              Make recurring
+            </label>
+
+            <div>
+              <Label htmlFor="event-additional">Add more tasks (one per line)</Label>
+              <textarea
+                id="event-additional"
+                className="flex min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Task 1&#10;Task 2"
+                value={eventDraft.additionalTasks}
+                onChange={(e) => setEventDraft((prev) => ({ ...prev, additionalTasks: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEventProperties}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
