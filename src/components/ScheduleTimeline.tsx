@@ -14,6 +14,11 @@ export interface ScheduledTask extends Task {
   startTime: string;
   endTime: string;
   isBreak?: boolean;
+  subtasks?: string[];
+  recurringFrequency?: "daily" | "weekly" | "monthly";
+  recurringInterval?: number;
+  recurringDays?: string[];
+  recurringEndDate?: string;
 }
 
 interface ScheduleTimelineProps {

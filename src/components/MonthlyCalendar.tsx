@@ -146,6 +146,11 @@ const DraggableTask = ({
           <p className="text-xs text-muted-foreground mt-0.5">
             {task.startTime} - {task.endTime}
           </p>
+          {task.subtasks && task.subtasks.length > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">
+              {task.subtasks.join(" | ")}
+            </p>
+          )}
         </div>
         {/* Delete button */}
         {!task.isBreak && (
@@ -210,6 +215,10 @@ interface EventDraft {
   duration: number;
   recurring: boolean;
   additionalTasks: string;
+  recurringFrequency: "daily" | "weekly" | "monthly";
+  recurringInterval: number;
+  recurringDays: string;
+  recurringEndDate: string;
 }
 
 const START_HOUR = 5;
@@ -238,14 +247,6 @@ const timeToWindowMinutes = (time: string) => {
   const absoluteMinutes = timeToMinutes(time);
   const startMinutes = START_HOUR * 60;
   return absoluteMinutes < startMinutes ? absoluteMinutes + HOURS_IN_DAY * 60 : absoluteMinutes;
-};
-
-const minutesToTime = (totalMinutes: number) => {
-  const bounded = clamp(totalMinutes, START_HOUR * 60, START_HOUR * 60 + TOTAL_VISIBLE_MINUTES);
-  const normalized = ((bounded % (HOURS_IN_DAY * 60)) + HOURS_IN_DAY * 60) % (HOURS_IN_DAY * 60);
-  const hours = Math.floor(normalized / 60);
-  const minutes = normalized % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 };
 
 const pointerYToMinutes = (clientY: number, top: number, height: number) => {
@@ -339,6 +340,10 @@ export const MonthlyCalendar = ({
     duration: 30,
     recurring: false,
     additionalTasks: "",
+    recurringFrequency: "weekly",
+    recurringInterval: 1,
+    recurringDays: "",
+    recurringEndDate: "",
   });
   const { toast } = useToast();
 
@@ -431,7 +436,11 @@ export const MonthlyCalendar = ({
       startTime: task.startTime,
       duration: task.duration,
       recurring: Boolean(task.recurringTaskId),
-      additionalTasks: "",
+      additionalTasks: (task.subtasks || []).join("\n"),
+      recurringFrequency: task.recurringFrequency || "weekly",
+      recurringInterval: task.recurringInterval || 1,
+      recurringDays: (task.recurringDays || []).join(", "),
+      recurringEndDate: task.recurringEndDate || "",
     });
   };
 
@@ -450,21 +459,26 @@ export const MonthlyCalendar = ({
       onTaskResize?.(task, day, duration);
     }
 
-    const recurringTaskId = eventDraft.recurring ? (task.recurringTaskId || `manual-${task.id}`) : undefined;
-    onTaskUpdate?.(task, day, { title, recurringTaskId });
-
     const additional = eventDraft.additionalTasks
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
 
-    if (additional.length > 0) {
-      const baseStart = timeToMinutes(startTime) + duration;
-      additional.forEach((line, idx) => {
-        const extraStart = minutesToTime(baseStart + idx * duration);
-        onTaskCreate?.(day, extraStart, duration, line);
-      });
-    }
+    const recurringTaskId = eventDraft.recurring ? (task.recurringTaskId || `manual-${task.id}`) : undefined;
+    const recurringDays = eventDraft.recurringDays
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    onTaskUpdate?.(task, day, {
+      title,
+      recurringTaskId,
+      subtasks: additional,
+      recurringFrequency: eventDraft.recurring ? eventDraft.recurringFrequency : undefined,
+      recurringInterval: eventDraft.recurring ? Math.max(1, Math.floor(eventDraft.recurringInterval || 1)) : undefined,
+      recurringDays: eventDraft.recurring ? recurringDays : undefined,
+      recurringEndDate: eventDraft.recurring ? eventDraft.recurringEndDate || undefined : undefined,
+    });
 
     setEditingEvent(null);
   };
@@ -817,6 +831,61 @@ export const MonthlyCalendar = ({
               Make recurring
             </label>
 
+            {eventDraft.recurring && (
+              <div className="rounded-md border border-border p-3 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="recurring-frequency">Frequency</Label>
+                    <select
+                      id="recurring-frequency"
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={eventDraft.recurringFrequency}
+                      onChange={(e) =>
+                        setEventDraft((prev) => ({
+                          ...prev,
+                          recurringFrequency: e.target.value as "daily" | "weekly" | "monthly",
+                        }))
+                      }
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="recurring-interval">Every</Label>
+                    <Input
+                      id="recurring-interval"
+                      type="number"
+                      min={1}
+                      value={eventDraft.recurringInterval}
+                      onChange={(e) =>
+                        setEventDraft((prev) => ({ ...prev, recurringInterval: Math.max(1, Number(e.target.value) || 1) }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="recurring-days">Weekdays (comma separated)</Label>
+                  <Input
+                    id="recurring-days"
+                    placeholder="Mon, Wed, Fri"
+                    value={eventDraft.recurringDays}
+                    onChange={(e) => setEventDraft((prev) => ({ ...prev, recurringDays: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="recurring-end">End date (optional)</Label>
+                  <Input
+                    id="recurring-end"
+                    type="date"
+                    value={eventDraft.recurringEndDate}
+                    onChange={(e) => setEventDraft((prev) => ({ ...prev, recurringEndDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <Label htmlFor="event-additional">Add more tasks (one per line)</Label>
               <textarea
@@ -829,17 +898,16 @@ export const MonthlyCalendar = ({
             </div>
           </div>
 
-          <DialogFooter>
-            <Button
-              variant="destructive"
-              onClick={deleteSelectedEvent}
-            >
+          <DialogFooter className="w-full justify-between">
+            <Button variant="destructive" onClick={deleteSelectedEvent}>
               Delete Event
             </Button>
-            <Button variant="outline" onClick={() => setEditingEvent(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveEventProperties}>Save</Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditingEvent(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEventProperties}>Save</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
