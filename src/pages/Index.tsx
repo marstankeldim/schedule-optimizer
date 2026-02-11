@@ -68,7 +68,9 @@ const Index = () => {
   const [selectedTaskForDependency, setSelectedTaskForDependency] = useState<Task | null>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [activeLeftTab, setActiveLeftTab] = useState<"menu" | "history" | "alerts" | null>(null);
+  const [activeLeftTab, setActiveLeftTab] = useState<
+    "menu" | "history" | "alerts" | "import" | "plan" | "streak" | "achievements" | "wellness" | "goals" | null
+  >(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { checkAndUpdateGoals } = useGoalTracking(session?.user?.id);
@@ -754,6 +756,24 @@ const Index = () => {
             <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("alerts")}>
               alerts
             </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("import")}>
+              import
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("plan")}>
+              plan
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("streak")}>
+              streak
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("achievements")}>
+              achievements
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("wellness")}>
+              wellness
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("goals")}>
+              goals
+            </button>
             {activeLeftTab && (
               <button className="mt-auto text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab(null)}>
                 close
@@ -813,6 +833,46 @@ const Index = () => {
                 </Card>
               )}
 
+              {activeLeftTab === "import" && session?.user && (
+                <CalendarImport
+                  userId={session.user.id}
+                  onEventsImported={() => {
+                    toast({
+                      title: "Calendar updated",
+                      description: "Your schedule optimization will now consider your calendar events",
+                    });
+                  }}
+                />
+              )}
+
+              {activeLeftTab === "plan" && session?.user && (
+                <PlanMyDay
+                  userId={session.user.id}
+                  existingTasks={tasks}
+                  onTasksGenerated={(newTasks) => {
+                    setTasks((prev) => [...prev, ...newTasks]);
+                  }}
+                />
+              )}
+
+              {activeLeftTab === "streak" && (
+                <Card className="p-6 bg-gradient-card border-border shadow-card">
+                  <StreakTracker currentStreak={currentStreak} longestStreak={longestStreak} loading={streakLoading} />
+                </Card>
+              )}
+
+              {activeLeftTab === "achievements" && session?.user && (
+                <Achievements userId={session.user.id} currentStreak={currentStreak} />
+              )}
+
+              {activeLeftTab === "wellness" && session?.user && (
+                <MentalHealthRewards userId={session.user.id} />
+              )}
+
+              {activeLeftTab === "goals" && session?.user && (
+                <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />
+              )}
+
               {activeLeftTab === "menu" && (
                 <div className="space-y-6">
                   <Card className="p-4">
@@ -866,26 +926,6 @@ const Index = () => {
                   />
                   <TaskTemplates onSelectTemplate={handleAddTask} />
                   {session?.user && <RecurringTasks key={recurringTasksKey} userId={session.user.id} onTasksGenerated={loadTasks} />}
-                  {session?.user && (
-                    <CalendarImport
-                      userId={session.user.id}
-                      onEventsImported={() => {
-                        toast({
-                          title: "Calendar updated",
-                          description: "Your schedule optimization will now consider your calendar events",
-                        });
-                      }}
-                    />
-                  )}
-                  {session?.user && (
-                    <PlanMyDay
-                      userId={session.user.id}
-                      existingTasks={tasks}
-                      onTasksGenerated={(newTasks) => {
-                        setTasks((prev) => [...prev, ...newTasks]);
-                      }}
-                    />
-                  )}
 
                   {tasks.length > 0 && (
                     <Button
@@ -899,11 +939,7 @@ const Index = () => {
                   )}
 
                   {session?.user && <SchedulePreferences userId={session.user.id} />}
-                  <StreakTracker currentStreak={currentStreak} longestStreak={longestStreak} loading={streakLoading} />
-                  {session?.user && <Achievements userId={session.user.id} currentStreak={currentStreak} />}
-                  {session?.user && <MentalHealthRewards userId={session.user.id} />}
                   {session?.user && planningPeriod === "week" && <WeeklyOptimizationSettings userId={session.user.id} />}
-                  {session?.user && <GoalsSidebar userId={session.user.id} onGoalAchieved={checkAndUpdateGoals} />}
                   {session?.user && <TaskHistory userId={session.user.id} />}
                   {Object.keys(weeklySchedule).length > 0 && <WorkloadBalanceChart weeklySchedule={weeklySchedule} />}
                 </div>
