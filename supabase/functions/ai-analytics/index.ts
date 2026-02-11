@@ -19,6 +19,11 @@ const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
 const toString = (value: unknown) => (typeof value === 'string' ? value : '');
 const toBoolean = (value: unknown) => value === true;
+const cleanAiText = (value: unknown) =>
+  toString(value)
+    .replace(/\b(?:null|undefined)\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const parseJsonFromAiContent = (content: string): unknown => {
   const codeFenceMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -99,11 +104,12 @@ const normalizeResult = (type: AnalyticsType, payload: unknown) => {
   return {
     summary: {
       topPriorities: Array.isArray(summary.topPriorities)
-        ? summary.topPriorities.slice(0, 5).map((item) => toString(item)).filter(Boolean)
+        ? summary.topPriorities.slice(0, 5).map((item) => cleanAiText(item)).filter(Boolean)
         : [],
-      energyPattern: toString(summary.energyPattern),
-      keyRecommendation: toString(summary.keyRecommendation),
-      workloadEstimate: toString(summary.workloadEstimate),
+      energyPattern: cleanAiText(summary.energyPattern),
+      keyRecommendation: cleanAiText(summary.keyRecommendation),
+      workloadEstimate: cleanAiText(summary.workloadEstimate) ||
+        'Estimate 4-5 hours of focused work on task definition and prioritization, plus buffer for unexpected items.',
     },
   };
 };
