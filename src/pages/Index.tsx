@@ -745,12 +745,6 @@ const Index = () => {
               </Button>
             </div>
           </div>
-          <div className="text-center">
-            <h1 className="text-5xl font-bold text-foreground mb-3 tracking-tight">Schedule Optimizer</h1>
-            <p className="text-xl text-muted-foreground">
-              AI-powered task scheduling that adapts to your energy levels and priorities
-            </p>
-          </div>
         </header>
 
         <div className="fixed left-0 top-0 z-40 h-screen w-[128px] border-r border-border bg-card/95 backdrop-blur-sm">
@@ -782,6 +776,8 @@ const Index = () => {
                 </p>
               </div>
             </div>
+
+            <p className="text-[11px] text-muted-foreground px-2 mb-1">Navigations:</p>
 
             <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("menu")}>
               <Menu className="w-3.5 h-3.5" />
