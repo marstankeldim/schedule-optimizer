@@ -212,18 +212,20 @@ interface EventDraft {
   additionalTasks: string;
 }
 
-const START_HOUR = 6;
+const START_HOUR = 5;
 const PIXELS_PER_HOUR = 80;
 const SNAP_MINUTES = 5;
-const TOTAL_VISIBLE_MINUTES = 17 * 60;
+const TOTAL_VISIBLE_MINUTES = 24 * 60;
+const HOURS_IN_DAY = 24;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const snapToFiveMinutes = (minutes: number) => Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
 
 const minutesFromOffsetToTime = (minutesFromStart: number) => {
   const totalMinutes = START_HOUR * 60 + minutesFromStart;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  const normalized = ((totalMinutes % (HOURS_IN_DAY * 60)) + HOURS_IN_DAY * 60) % (HOURS_IN_DAY * 60);
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 };
 
@@ -232,10 +234,17 @@ const timeToMinutes = (time: string) => {
   return hours * 60 + minutes;
 };
 
+const timeToWindowMinutes = (time: string) => {
+  const absoluteMinutes = timeToMinutes(time);
+  const startMinutes = START_HOUR * 60;
+  return absoluteMinutes < startMinutes ? absoluteMinutes + HOURS_IN_DAY * 60 : absoluteMinutes;
+};
+
 const minutesToTime = (totalMinutes: number) => {
-  const bounded = clamp(totalMinutes, START_HOUR * 60, 22 * 60);
-  const hours = Math.floor(bounded / 60);
-  const minutes = bounded % 60;
+  const bounded = clamp(totalMinutes, START_HOUR * 60, START_HOUR * 60 + TOTAL_VISIBLE_MINUTES);
+  const normalized = ((bounded % (HOURS_IN_DAY * 60)) + HOURS_IN_DAY * 60) % (HOURS_IN_DAY * 60);
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 };
 
@@ -248,11 +257,14 @@ const pointerYToMinutes = (clientY: number, top: number, height: number) => {
 const computeDayLayout = (tasks: ScheduledTask[]) => {
   const indexed = tasks.map((task, index) => ({
     index,
-    start: timeToMinutes(task.startTime),
-    end: timeToMinutes(task.endTime),
+    start: timeToWindowMinutes(task.startTime),
+    end: timeToWindowMinutes(task.endTime),
     column: 0,
     maxColumns: 1,
-  })).sort((a, b) => (a.start - b.start) || (a.end - b.end));
+  })).map((item) => {
+    if (item.end <= item.start) item.end += HOURS_IN_DAY * 60;
+    return item;
+  }).sort((a, b) => (a.start - b.start) || (a.end - b.end));
 
   const active: typeof indexed = [];
 
@@ -364,14 +376,21 @@ export const MonthlyCalendar = ({
   const handlePrevWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const handleNextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
-  const timeSlots = Array.from({ length: 17 }, (_, i) => i + START_HOUR);
+  const timeSlots = Array.from({ length: HOURS_IN_DAY }, (_, i) => i + START_HOUR);
 
   const getTaskPosition = (task: ScheduledTask) => {
     const [startHour, startMin] = task.startTime.split(":").map(Number);
     const [endHour, endMin] = task.endTime.split(":").map(Number);
-    
-    const startOffset = (startHour - START_HOUR) * 60 + startMin;
-    const duration = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+
+    let startAbsolute = startHour * 60 + startMin;
+    let endAbsolute = endHour * 60 + endMin;
+    const startWindow = START_HOUR * 60;
+    if (startAbsolute < startWindow) startAbsolute += HOURS_IN_DAY * 60;
+    if (endAbsolute < startWindow) endAbsolute += HOURS_IN_DAY * 60;
+    if (endAbsolute <= startAbsolute) endAbsolute += HOURS_IN_DAY * 60;
+
+    const startOffset = startAbsolute - startWindow;
+    const duration = endAbsolute - startAbsolute;
     
     return {
       top: `${(startOffset / 60) * PIXELS_PER_HOUR}px`,
@@ -393,8 +412,11 @@ export const MonthlyCalendar = ({
   const getCurrentTimePosition = () => {
     const hours = currentTime.getHours();
     const minutes = currentTime.getMinutes();
-    if (hours < START_HOUR || hours >= 22) return null;
-    const offset = (hours - START_HOUR) * 60 + minutes;
+    let absolute = hours * 60 + minutes;
+    const startWindow = START_HOUR * 60;
+    if (absolute < startWindow) absolute += HOURS_IN_DAY * 60;
+    const offset = absolute - startWindow;
+    if (offset < 0 || offset > TOTAL_VISIBLE_MINUTES) return null;
     return `${(offset / 60) * PIXELS_PER_HOUR}px`;
   };
 
@@ -548,7 +570,8 @@ export const MonthlyCalendar = ({
       return;
     }
 
-    const newStartTime = `${String(hour).padStart(2, '0')}:00`;
+    const normalizedHour = ((hour % HOURS_IN_DAY) + HOURS_IN_DAY) % HOURS_IN_DAY;
+    const newStartTime = `${String(normalizedHour).padStart(2, '0')}:00`;
     
     if (fromDay !== toDay || task.startTime !== newStartTime) {
       onTaskReschedule?.(task, fromDay, toDay, newStartTime);
@@ -626,7 +649,7 @@ export const MonthlyCalendar = ({
               <div className="w-[56px]">
                 {timeSlots.map((hour) => (
                   <div key={hour} className="h-20 text-xs text-muted-foreground pr-2 text-right flex items-start pt-1">
-                    {format(new Date().setHours(hour, 0), "h a")}
+                    {format(new Date().setHours(((hour % HOURS_IN_DAY) + HOURS_IN_DAY) % HOURS_IN_DAY, 0), "h a")}
                   </div>
                 ))}
               </div>
