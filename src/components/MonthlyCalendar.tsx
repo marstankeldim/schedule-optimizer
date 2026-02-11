@@ -217,7 +217,7 @@ interface EventDraft {
   additionalTasks: string;
   recurringFrequency: "daily" | "weekly" | "monthly";
   recurringInterval: number;
-  recurringDays: string;
+  recurringDays: string[];
   recurringEndDate: string;
 }
 
@@ -226,6 +226,7 @@ const PIXELS_PER_HOUR = 80;
 const SNAP_MINUTES = 5;
 const TOTAL_VISIBLE_MINUTES = 24 * 60;
 const HOURS_IN_DAY = 24;
+const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const snapToFiveMinutes = (minutes: number) => Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
@@ -342,7 +343,7 @@ export const MonthlyCalendar = ({
     additionalTasks: "",
     recurringFrequency: "weekly",
     recurringInterval: 1,
-    recurringDays: "",
+    recurringDays: [],
     recurringEndDate: "",
   });
   const { toast } = useToast();
@@ -439,7 +440,7 @@ export const MonthlyCalendar = ({
       additionalTasks: (task.subtasks || []).join("\n"),
       recurringFrequency: task.recurringFrequency || "weekly",
       recurringInterval: task.recurringInterval || 1,
-      recurringDays: (task.recurringDays || []).join(", "),
+      recurringDays: task.recurringDays || [],
       recurringEndDate: task.recurringEndDate || "",
     });
   };
@@ -465,18 +466,13 @@ export const MonthlyCalendar = ({
       .filter(Boolean);
 
     const recurringTaskId = eventDraft.recurring ? (task.recurringTaskId || `manual-${task.id}`) : undefined;
-    const recurringDays = eventDraft.recurringDays
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
-
     onTaskUpdate?.(task, day, {
       title,
       recurringTaskId,
       subtasks: additional,
       recurringFrequency: eventDraft.recurring ? eventDraft.recurringFrequency : undefined,
       recurringInterval: eventDraft.recurring ? Math.max(1, Math.floor(eventDraft.recurringInterval || 1)) : undefined,
-      recurringDays: eventDraft.recurring ? recurringDays : undefined,
+      recurringDays: eventDraft.recurring ? eventDraft.recurringDays : undefined,
       recurringEndDate: eventDraft.recurring ? eventDraft.recurringEndDate || undefined : undefined,
     });
 
@@ -865,15 +861,38 @@ export const MonthlyCalendar = ({
                     />
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="recurring-days">Weekdays (comma separated)</Label>
-                  <Input
-                    id="recurring-days"
-                    placeholder="Mon, Wed, Fri"
-                    value={eventDraft.recurringDays}
-                    onChange={(e) => setEventDraft((prev) => ({ ...prev, recurringDays: e.target.value }))}
-                  />
-                </div>
+                {eventDraft.recurringFrequency === "weekly" && (
+                  <div>
+                    <Label>Weekdays</Label>
+                    <div className="mt-1 grid grid-cols-7 gap-1">
+                      {WEEKDAY_SHORT.map((day) => {
+                        const selected = eventDraft.recurringDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            className={cn(
+                              "rounded-full border px-0 py-1 text-[10px] font-medium",
+                              selected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-muted-foreground border-border hover:bg-secondary",
+                            )}
+                            onClick={() =>
+                              setEventDraft((prev) => ({
+                                ...prev,
+                                recurringDays: prev.recurringDays.includes(day)
+                                  ? prev.recurringDays.filter((d) => d !== day)
+                                  : [...prev.recurringDays, day],
+                              }))
+                            }
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="recurring-end">End date (optional)</Label>
                   <Input

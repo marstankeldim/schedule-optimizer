@@ -761,7 +761,7 @@ const Index = () => {
                   <img
                     src={session.user.user_metadata.avatar_url}
                     alt="Profile"
-                    className="h-8 w-8 rounded-full object-cover border border-border"
+                    className="h-8 w-8 aspect-square shrink-0 rounded-full object-cover overflow-hidden border border-border"
                   />
                 ) : (
                   <div className="h-8 w-8 rounded-full bg-primary/20 border border-border flex items-center justify-center text-xs font-semibold text-primary">
