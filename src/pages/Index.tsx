@@ -34,6 +34,14 @@ import {
   Focus,
   Bell,
   ListTodo,
+  Menu,
+  Upload,
+  WandSparkles,
+  Flame,
+  Trophy,
+  HeartPulse,
+  Target,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoalTracking } from "@/hooks/useGoalTracking";
@@ -747,35 +755,73 @@ const Index = () => {
 
         <div className="fixed left-0 top-0 z-40 h-screen w-[128px] border-r border-border bg-card/95 backdrop-blur-sm">
           <div className="flex h-full flex-col gap-2 p-2">
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("menu")}>
+            <div className="rounded-md border border-border bg-secondary/40 p-2 mb-2">
+              <div className="flex items-center gap-2">
+                {session?.user?.user_metadata?.avatar_url ? (
+                  <img
+                    src={session.user.user_metadata.avatar_url}
+                    alt="Profile"
+                    className="h-8 w-8 rounded-full object-cover border border-border"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-primary/20 border border-border flex items-center justify-center text-xs font-semibold text-primary">
+                    {(session?.user?.user_metadata?.full_name?.[0] ||
+                      session?.user?.user_metadata?.name?.[0] ||
+                      session?.user?.email?.[0] ||
+                      "U"
+                    ).toUpperCase()}
+                  </div>
+                )}
+                <p className="text-xs text-foreground font-medium truncate">
+                  {session?.user?.user_metadata?.full_name ||
+                    session?.user?.user_metadata?.name ||
+                    session?.user?.email?.split("@")[0] ||
+                    "User"}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground px-2 mb-1">Navigations:</p>
+
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("menu")}>
+              <Menu className="w-3.5 h-3.5" />
               menu
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("history")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("history")}>
+              <History className="w-3.5 h-3.5" />
               history
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("alerts")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("alerts")}>
+              <Bell className="w-3.5 h-3.5" />
               alerts
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("import")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("import")}>
+              <Upload className="w-3.5 h-3.5" />
               import
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("plan")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("plan")}>
+              <WandSparkles className="w-3.5 h-3.5" />
               plan
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("streak")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("streak")}>
+              <Flame className="w-3.5 h-3.5" />
               streak
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("achievements")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("achievements")}>
+              <Trophy className="w-3.5 h-3.5" />
               achievements
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("wellness")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("wellness")}>
+              <HeartPulse className="w-3.5 h-3.5" />
               wellness
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("goals")}>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("goals")}>
+              <Target className="w-3.5 h-3.5" />
               goals
             </button>
             {activeLeftTab && (
-              <button className="mt-auto text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab(null)}>
+              <button className="mt-auto text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab(null)}>
+                <X className="w-3.5 h-3.5" />
                 close
               </button>
             )}
