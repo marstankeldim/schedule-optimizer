@@ -254,6 +254,7 @@ export const MonthlyCalendar = ({
   };
 
   const currentTimeTop = getCurrentTimePosition();
+  const calendarGridColumns = '56px repeat(7, minmax(0, 1fr))';
 
   const handleDragStart = (event: DragStartEvent) => {
     const { task, day } = event.active.data.current as { task: ScheduledTask; day: Date };
@@ -314,11 +315,11 @@ export const MonthlyCalendar = ({
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* Calendar Grid - Scrollable container */}
-        <div className="calendar-scroll overflow-auto" style={{ maxHeight: 'clamp(480px, calc(100vh - 260px), 820px)' }}>
-          <div style={{ minWidth: '1200px' }}>
+        <div className="calendar-scroll overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'clamp(480px, calc(100vh - 260px), 820px)' }}>
+          <div>
             {/* Day Headers */}
-            <div className="grid gap-1 sticky top-0 bg-background z-10 pb-2" style={{ gridTemplateColumns: '60px repeat(7, minmax(150px, 1fr))' }}>
-              <div className="w-[60px]" />
+            <div className="grid gap-1 sticky top-0 bg-background z-10 pb-2" style={{ gridTemplateColumns: calendarGridColumns }}>
+              <div className="w-[56px]" />
               {days.map((day) => {
                 const isToday = isSameDay(day, new Date());
                 const tasks = getTasksForDay(day);
@@ -351,9 +352,9 @@ export const MonthlyCalendar = ({
             </div>
 
             {/* Time Grid */}
-            <div className="grid gap-1" style={{ gridTemplateColumns: '60px repeat(7, minmax(150px, 1fr))' }}>
+            <div className="grid gap-1" style={{ gridTemplateColumns: calendarGridColumns }}>
               {/* Time Labels */}
-              <div className="w-[60px]">
+              <div className="w-[56px]">
                 {timeSlots.map((hour) => (
                   <div key={hour} className="h-20 text-xs text-muted-foreground pr-2 text-right flex items-start pt-1">
                     {format(new Date().setHours(hour, 0), "h a")}
