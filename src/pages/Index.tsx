@@ -758,11 +758,13 @@ const Index = () => {
             <div className="rounded-md border border-border bg-secondary/40 p-2 mb-2">
               <div className="flex items-center gap-2">
                 {session?.user?.user_metadata?.avatar_url ? (
-                  <img
-                    src={session.user.user_metadata.avatar_url}
-                    alt="Profile"
-                    className="h-8 w-8 aspect-square shrink-0 rounded-full object-cover overflow-hidden border border-border"
-                  />
+                  <div className="h-8 w-8 shrink-0 rounded-full overflow-hidden border border-border">
+                    <img
+                      src={session.user.user_metadata.avatar_url}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 ) : (
                   <div className="h-8 w-8 rounded-full bg-primary/20 border border-border flex items-center justify-center text-xs font-semibold text-primary">
                     {(session?.user?.user_metadata?.full_name?.[0] ||
@@ -781,11 +783,21 @@ const Index = () => {
               </div>
             </div>
 
-            <p className="text-[11px] text-muted-foreground px-2 mb-1">Navigations:</p>
-
             <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("menu")}>
               <Menu className="w-3.5 h-3.5" />
               menu
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("plan")}>
+              <WandSparkles className="w-3.5 h-3.5" />
+              plan
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("import")}>
+              <Upload className="w-3.5 h-3.5" />
+              import
+            </button>
+            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("goals")}>
+              <Target className="w-3.5 h-3.5" />
+              goals
             </button>
             <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("history")}>
               <History className="w-3.5 h-3.5" />
@@ -794,14 +806,6 @@ const Index = () => {
             <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("alerts")}>
               <Bell className="w-3.5 h-3.5" />
               alerts
-            </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("import")}>
-              <Upload className="w-3.5 h-3.5" />
-              import
-            </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("plan")}>
-              <WandSparkles className="w-3.5 h-3.5" />
-              plan
             </button>
             <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("streak")}>
               <Flame className="w-3.5 h-3.5" />
@@ -815,16 +819,16 @@ const Index = () => {
               <HeartPulse className="w-3.5 h-3.5" />
               wellness
             </button>
-            <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab("goals")}>
-              <Target className="w-3.5 h-3.5" />
-              goals
-            </button>
             {activeLeftTab && (
-              <button className="mt-auto text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab(null)}>
+              <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary flex items-center gap-1.5" onClick={() => setActiveLeftTab(null)}>
                 <X className="w-3.5 h-3.5" />
                 close
               </button>
             )}
+            <div className="mt-auto px-2 pt-2 text-[10px] leading-tight text-muted-foreground border-t border-border/60">
+              <p>chronos 0.1</p>
+              <p>All rights reserved C2025</p>
+            </div>
           </div>
         </div>
 
