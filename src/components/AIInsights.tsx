@@ -48,7 +48,7 @@ export const AIInsights = ({ userId }: AIInsightsProps) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-analytics', {
-        body: { type, userId },
+        body: { type },
       });
 
       if (error) throw error;

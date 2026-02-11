@@ -26,7 +26,7 @@ export const DailyAISummary = ({ userId }: DailyAISummaryProps) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-analytics', {
-        body: { type: 'daily_summary', userId },
+        body: { type: 'daily_summary' },
       });
 
       if (error) throw error;
