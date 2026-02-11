@@ -30,13 +30,26 @@ interface DraggableTaskProps {
   day: Date;
   position: { top: string; height: string; left: string; width: string };
   isCompleted: boolean;
+  isSelected: boolean;
   onComplete?: () => void;
   onResize?: (newDuration: number) => void;
   onDelete?: () => void;
   onOpenProperties?: () => void;
+  onSelect?: () => void;
 }
 
-const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize, onDelete, onOpenProperties }: DraggableTaskProps) => {
+const DraggableTask = ({
+  task,
+  day,
+  position,
+  isCompleted,
+  isSelected,
+  onComplete,
+  onResize,
+  onDelete,
+  onOpenProperties,
+  onSelect,
+}: DraggableTaskProps) => {
   const dayKey = format(day, "yyyy-MM-dd");
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${task.id}-${dayKey}`,
@@ -89,6 +102,7 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
         "absolute rounded-lg px-2 py-1.5 overflow-hidden transition-all group shadow-sm",
         isDragging ? "opacity-50 z-50" : "hover:shadow-lg",
         isResizing && "z-50",
+        isSelected && "ring-2 ring-primary",
         task.isBreak
           ? "bg-accent/40 border-2 border-accent/60"
           : isCompleted
@@ -103,6 +117,10 @@ const DraggableTask = ({ task, day, position, isCompleted, onComplete, onResize,
       onDoubleClick={(e) => {
         e.stopPropagation();
         onOpenProperties?.();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect?.();
       }}
     >
       <div className="flex items-start gap-1.5">
@@ -301,6 +319,7 @@ export const MonthlyCalendar = ({
   const [activeTask, setActiveTask] = useState<{ task: ScheduledTask; day: Date } | null>(null);
   const [creationDraft, setCreationDraft] = useState<CreationDraft | null>(null);
   const [editingEvent, setEditingEvent] = useState<{ task: ScheduledTask; day: Date } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ task: ScheduledTask; day: Date } | null>(null);
   const [eventDraft, setEventDraft] = useState<EventDraft>({
     title: "",
     startTime: "09:00",
@@ -383,6 +402,7 @@ export const MonthlyCalendar = ({
 
   const openPropertiesDialog = (task: ScheduledTask, day: Date) => {
     setEditingEvent({ task, day });
+    setSelectedEvent({ task, day });
     setEventDraft({
       title: task.title,
       startTime: task.startTime,
@@ -426,6 +446,15 @@ export const MonthlyCalendar = ({
     setEditingEvent(null);
   };
 
+  const deleteSelectedEvent = useCallback(() => {
+    if (!selectedEvent) return;
+    onTaskDelete?.(selectedEvent.task, selectedEvent.day);
+    if (editingEvent && selectedEvent.task.id === editingEvent.task.id) {
+      setEditingEvent(null);
+    }
+    setSelectedEvent(null);
+  }, [selectedEvent, onTaskDelete, editingEvent]);
+
   useEffect(() => {
     if (!creationDraft) return;
 
@@ -440,14 +469,12 @@ export const MonthlyCalendar = ({
     };
 
     const handleMouseUp = () => {
-      setCreationDraft((prev) => {
-        if (!prev) return null;
-        const startMinutes = Math.min(prev.startMinutes, prev.currentMinutes);
-        const endMinutes = Math.max(prev.startMinutes, prev.currentMinutes);
-        const duration = Math.max(SNAP_MINUTES, endMinutes - startMinutes);
-        onTaskCreate?.(prev.day, minutesFromOffsetToTime(startMinutes), duration);
-        return null;
-      });
+      const startMinutes = Math.min(creationDraft.startMinutes, creationDraft.currentMinutes);
+      const endMinutes = Math.max(creationDraft.startMinutes, creationDraft.currentMinutes);
+      const duration = Math.max(SNAP_MINUTES, endMinutes - startMinutes);
+
+      onTaskCreate?.(creationDraft.day, minutesFromOffsetToTime(startMinutes), duration);
+      setCreationDraft(null);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
@@ -458,6 +485,27 @@ export const MonthlyCalendar = ({
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [creationDraft, onTaskCreate]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!selectedEvent) return;
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (activeEl) {
+        const tag = activeEl.tagName;
+        const isTypingField =
+          tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || activeEl.isContentEditable;
+        if (isTypingField) return;
+      }
+
+      event.preventDefault();
+      deleteSelectedEvent();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedEvent, deleteSelectedEvent]);
 
   const startCreateDraft = (event: React.MouseEvent<HTMLDivElement>, day: Date) => {
     if (event.button !== 0) return;
@@ -645,6 +693,11 @@ export const MonthlyCalendar = ({
                         width: layout?.width || "calc(100% - 4px)",
                       };
                       const isCompleted = completedTaskIds.has(task.id);
+                      const isSelected = Boolean(
+                        selectedEvent &&
+                        selectedEvent.task.id === task.id &&
+                        isSameDay(selectedEvent.day, day),
+                      );
 
                       return (
                         <DraggableTask
@@ -653,10 +706,12 @@ export const MonthlyCalendar = ({
                           day={day}
                           position={position}
                           isCompleted={isCompleted}
+                          isSelected={isSelected}
                           onComplete={() => onTaskComplete?.(task, day)}
                           onResize={(newDuration) => onTaskResize?.(task, day, newDuration)}
                           onDelete={() => onTaskDelete?.(task, day)}
                           onOpenProperties={() => openPropertiesDialog(task, day)}
+                          onSelect={() => setSelectedEvent({ task, day })}
                         />
                       );
                     })}
@@ -751,6 +806,12 @@ export const MonthlyCalendar = ({
           </div>
 
           <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={deleteSelectedEvent}
+            >
+              Delete Event
+            </Button>
             <Button variant="outline" onClick={() => setEditingEvent(null)}>
               Cancel
             </Button>
