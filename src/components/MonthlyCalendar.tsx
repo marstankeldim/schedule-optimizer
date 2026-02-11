@@ -314,7 +314,7 @@ export const MonthlyCalendar = ({
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* Calendar Grid - Scrollable container */}
-        <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+        <div className="overflow-auto" style={{ maxHeight: 'clamp(520px, calc(100vh - 220px), 880px)' }}>
           <div style={{ minWidth: '1200px' }}>
             {/* Day Headers */}
             <div className="grid gap-1 sticky top-0 bg-background z-10 pb-2" style={{ gridTemplateColumns: '60px repeat(7, minmax(150px, 1fr))' }}>
