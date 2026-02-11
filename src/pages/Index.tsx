@@ -745,7 +745,7 @@ const Index = () => {
           </div>
         </header>
 
-        <div className="fixed left-0 top-0 z-40 h-screen w-[72px] border-r border-border bg-card/95 backdrop-blur-sm">
+        <div className="fixed left-0 top-0 z-40 h-screen w-[128px] border-r border-border bg-card/95 backdrop-blur-sm">
           <div className="flex h-full flex-col gap-2 p-2">
             <button className="text-xs text-left px-2 py-1 rounded hover:bg-secondary" onClick={() => setActiveLeftTab("menu")}>
               menu
@@ -785,7 +785,7 @@ const Index = () => {
         {activeLeftTab && (
           <div className="fixed inset-0 z-30 bg-background/70" onClick={() => setActiveLeftTab(null)}>
             <div
-              className="box-scroll absolute left-[72px] top-0 h-full w-[min(520px,calc(100vw-72px))] overflow-y-auto border-r border-border bg-card p-6"
+              className="box-scroll absolute left-[128px] top-0 h-full w-[min(520px,calc(100vw-128px))] overflow-y-auto border-r border-border bg-card p-6"
               onClick={(e) => e.stopPropagation()}
             >
               {activeLeftTab === "history" && (
@@ -948,7 +948,7 @@ const Index = () => {
           </div>
         )}
 
-        <main className="space-y-6 ml-[84px]">
+        <main className="space-y-6 ml-[140px]">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-muted-foreground" />
               <h2 className="text-2xl font-semibold text-foreground">Calendar</h2>
