@@ -227,9 +227,34 @@ const SNAP_MINUTES = 5;
 const TOTAL_VISIBLE_MINUTES = 24 * 60;
 const HOURS_IN_DAY = 24;
 const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const WEEKDAY_MAP: Record<string, (typeof WEEKDAY_SHORT)[number]> = {
+  mon: "Mon",
+  monday: "Mon",
+  tue: "Tue",
+  tues: "Tue",
+  tuesday: "Tue",
+  wed: "Wed",
+  wednesday: "Wed",
+  thu: "Thu",
+  thur: "Thu",
+  thurs: "Thu",
+  thursday: "Thu",
+  fri: "Fri",
+  friday: "Fri",
+  sat: "Sat",
+  saturday: "Sat",
+  sun: "Sun",
+  sunday: "Sun",
+};
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const snapToFiveMinutes = (minutes: number) => Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+const normalizeRecurringDays = (days: string[] = []) => {
+  const mapped = days
+    .map((d) => WEEKDAY_MAP[d.trim().toLowerCase()])
+    .filter(Boolean) as (typeof WEEKDAY_SHORT)[number][];
+  return Array.from(new Set(mapped));
+};
 
 const minutesFromOffsetToTime = (minutesFromStart: number) => {
   const totalMinutes = START_HOUR * 60 + minutesFromStart;
@@ -440,7 +465,7 @@ export const MonthlyCalendar = ({
       additionalTasks: (task.subtasks || []).join("\n"),
       recurringFrequency: task.recurringFrequency || "weekly",
       recurringInterval: task.recurringInterval || 1,
-      recurringDays: task.recurringDays || [],
+      recurringDays: normalizeRecurringDays(task.recurringDays || []),
       recurringEndDate: task.recurringEndDate || "",
     });
   };
@@ -472,7 +497,7 @@ export const MonthlyCalendar = ({
       subtasks: additional,
       recurringFrequency: eventDraft.recurring ? eventDraft.recurringFrequency : undefined,
       recurringInterval: eventDraft.recurring ? Math.max(1, Math.floor(eventDraft.recurringInterval || 1)) : undefined,
-      recurringDays: eventDraft.recurring ? eventDraft.recurringDays : undefined,
+      recurringDays: eventDraft.recurring ? normalizeRecurringDays(eventDraft.recurringDays) : undefined,
       recurringEndDate: eventDraft.recurring ? eventDraft.recurringEndDate || undefined : undefined,
     });
 
