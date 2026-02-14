@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format, isSameDay } from "date-fns";
+import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -57,6 +57,34 @@ import { CompletionCelebration } from "@/components/CompletionCelebration";
 import { PlanMyDay } from "@/components/PlanMyDay";
 
 const Index = () => {
+  const weekdayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+  const isoDateKeyPattern = /^\d{4}-\d{2}-\d{2}$/;
+  const toDateKey = (date: Date) => format(date, "yyyy-MM-dd");
+  const isIsoDateKey = (key: string) => isoDateKeyPattern.test(key);
+  const normalizeWeeklyScheduleForWeek = (
+    input: Record<string, ScheduledTask[]>,
+    anchorDate: Date,
+  ): Record<string, ScheduledTask[]> => {
+    const weekStartDate = startOfWeek(anchorDate, { weekStartsOn: 1 });
+    const dayNameToDateKey = weekdayNames.reduce(
+      (acc, dayName, index) => {
+        acc[dayName] = toDateKey(addDays(weekStartDate, index));
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+
+    const normalized: Record<string, ScheduledTask[]> = {};
+    Object.entries(input || {}).forEach(([key, tasks]) => {
+      const dateKey = isIsoDateKey(key) ? key : dayNameToDateKey[key];
+      if (!dateKey) return;
+      normalized[dateKey] = [...(normalized[dateKey] || []), ...(tasks || [])].sort((a, b) =>
+        a.startTime.localeCompare(b.startTime),
+      );
+    });
+    return normalized;
+  };
+
   const [session, setSession] = useState<Session | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [schedule, setSchedule] = useState<ScheduledTask[]>([]);
@@ -348,15 +376,15 @@ const Index = () => {
       if (error) throw error;
 
       if (planningPeriod === "week") {
-        setWeeklySchedule(data.weeklySchedule);
+        const normalizedWeeklySchedule = normalizeWeeklyScheduleForWeek(data.weeklySchedule || {}, new Date());
+        setWeeklySchedule(normalizedWeeklySchedule);
         setSchedule([]); // Clear daily schedule
 
         // Schedule notifications for each day's breaks
         if (notificationsEnabled) {
-          const today = new Date();
-          Object.entries(data.weeklySchedule).forEach(([day, daySchedule], index) => {
-            const scheduleDate = new Date(today);
-            scheduleDate.setDate(today.getDate() + index);
+          Object.entries(normalizedWeeklySchedule).forEach(([dateKey, daySchedule]) => {
+            const scheduleDate = new Date(`${dateKey}T00:00:00`);
+            if (Number.isNaN(scheduleDate.getTime())) return;
             scheduleBreakNotifications(daySchedule as ScheduledTask[], scheduleDate);
           });
         }
@@ -437,7 +465,14 @@ const Index = () => {
   };
 
   const handleLoadSchedule = (savedSchedule: any) => {
-    setSchedule(savedSchedule.schedule_data);
+    const scheduleData = savedSchedule.schedule_data;
+    if (scheduleData && typeof scheduleData === "object" && !Array.isArray(scheduleData) && "weeklySchedule" in scheduleData) {
+      setWeeklySchedule(normalizeWeeklyScheduleForWeek(scheduleData.weeklySchedule || {}, new Date()));
+      setSchedule([]);
+    } else {
+      setSchedule(Array.isArray(scheduleData) ? scheduleData : []);
+      setWeeklySchedule({});
+    }
     setCompletedTaskIds(new Set()); // Reset completed tasks for loaded schedule
     setStartTime(savedSchedule.start_time);
     setBreakPreference(savedSchedule.break_preference);
@@ -1070,26 +1105,26 @@ const Index = () => {
                 };
 
                 if (Object.keys(weeklySchedule).length > 0) {
-                  const dayName = format(day, "EEEE");
+                  const dayKey = toDateKey(day);
                   setWeeklySchedule((prev) => {
                     const updated = { ...prev };
-                    if (!updated[dayName]) updated[dayName] = [];
-                    updated[dayName] = [...updated[dayName], newTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                    if (!updated[dayKey]) updated[dayKey] = [];
+                    updated[dayKey] = [...updated[dayKey], newTask].sort((a, b) => a.startTime.localeCompare(b.startTime));
                     return updated;
                   });
                 } else {
                   const tomorrow = new Date();
                   tomorrow.setDate(tomorrow.getDate() + 1);
-                  const tomorrowDayName = format(tomorrow, "EEEE");
-                  const targetDayName = format(day, "EEEE");
+                  const tomorrowKey = toDateKey(tomorrow);
+                  const targetDayKey = toDateKey(day);
 
                   if (isSameDay(day, tomorrow)) {
                     setSchedule((prev) => [...prev, newTask].sort((a, b) => a.startTime.localeCompare(b.startTime)));
                   } else {
                     const seededWeeklySchedule: Record<string, ScheduledTask[]> = {
-                      [tomorrowDayName]: [...schedule],
+                      [tomorrowKey]: [...schedule],
                     };
-                    seededWeeklySchedule[targetDayName] = [...(seededWeeklySchedule[targetDayName] || []), newTask].sort((a, b) =>
+                    seededWeeklySchedule[targetDayKey] = [...(seededWeeklySchedule[targetDayKey] || []), newTask].sort((a, b) =>
                       a.startTime.localeCompare(b.startTime),
                     );
                     setWeeklySchedule(seededWeeklySchedule);
@@ -1102,8 +1137,8 @@ const Index = () => {
                 });
               }}
               onTaskReschedule={(task, fromDay, toDay, newStartTime) => {
-                const fromDayName = format(fromDay, "EEEE");
-                const toDayName = format(toDay, "EEEE");
+                const fromDayKey = toDateKey(fromDay);
+                const toDayKey = toDateKey(toDay);
                 const [startHour, startMin] = newStartTime.split(":").map(Number);
                 const endMinutes = startHour * 60 + startMin + task.duration;
                 const endHour = Math.floor(endMinutes / 60);
@@ -1115,13 +1150,13 @@ const Index = () => {
                 if (Object.keys(weeklySchedule).length > 0) {
                   setWeeklySchedule((prev) => {
                     const updated = { ...prev };
-                    if (updated[fromDayName]) {
-                      updated[fromDayName] = updated[fromDayName].filter((t) => t.id !== task.id);
+                    if (updated[fromDayKey]) {
+                      updated[fromDayKey] = updated[fromDayKey].filter((t) => t.id !== task.id);
                     }
-                    if (!updated[toDayName]) {
-                      updated[toDayName] = [];
+                    if (!updated[toDayKey]) {
+                      updated[toDayKey] = [];
                     }
-                    updated[toDayName] = [...updated[toDayName], updatedTask].sort((a, b) =>
+                    updated[toDayKey] = [...updated[toDayKey], updatedTask].sort((a, b) =>
                       a.startTime.localeCompare(b.startTime),
                     );
                     return updated;
@@ -1134,7 +1169,7 @@ const Index = () => {
                 }
               }}
               onTaskResize={(task, day, newDuration) => {
-                const dayName = format(day, "EEEE");
+                const dayKey = toDateKey(day);
                 const [startHour, startMin] = task.startTime.split(":").map(Number);
                 const endMinutes = startHour * 60 + startMin + newDuration;
                 const endHour = Math.floor(endMinutes / 60);
@@ -1146,8 +1181,8 @@ const Index = () => {
                 if (Object.keys(weeklySchedule).length > 0) {
                   setWeeklySchedule((prev) => {
                     const updated = { ...prev };
-                    if (updated[dayName]) {
-                      updated[dayName] = updated[dayName].map((t) => (t.id === task.id ? updatedTask : t));
+                    if (updated[dayKey]) {
+                      updated[dayKey] = updated[dayKey].map((t) => (t.id === task.id ? updatedTask : t));
                     }
                     return updated;
                   });
@@ -1156,12 +1191,12 @@ const Index = () => {
                 }
               }}
               onTaskUpdate={(task, day, updates) => {
-                const dayName = format(day, "EEEE");
+                const dayKey = toDateKey(day);
                 if (Object.keys(weeklySchedule).length > 0) {
                   setWeeklySchedule((prev) => {
                     const updated = { ...prev };
-                    if (updated[dayName]) {
-                      updated[dayName] = updated[dayName].map((t) => (t.id === task.id ? { ...t, ...updates } : t));
+                    if (updated[dayKey]) {
+                      updated[dayKey] = updated[dayKey].map((t) => (t.id === task.id ? { ...t, ...updates } : t));
                     }
                     return updated;
                   });
@@ -1170,12 +1205,12 @@ const Index = () => {
                 }
               }}
               onTaskDelete={(task, day) => {
-                const dayName = format(day, "EEEE");
+                const dayKey = toDateKey(day);
                 if (Object.keys(weeklySchedule).length > 0) {
                   setWeeklySchedule((prev) => {
                     const updated = { ...prev };
-                    if (updated[dayName]) {
-                      updated[dayName] = updated[dayName].filter((t) => t.id !== task.id);
+                    if (updated[dayKey]) {
+                      updated[dayKey] = updated[dayKey].filter((t) => t.id !== task.id);
                     }
                     return updated;
                   });

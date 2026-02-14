@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { BarChart3 } from "lucide-react";
+import { format, isValid, parseISO } from "date-fns";
 import type { ScheduledTask } from "./ScheduleTimeline";
 
 interface WorkloadBalanceChartProps {
@@ -8,6 +9,16 @@ interface WorkloadBalanceChartProps {
 }
 
 export const WorkloadBalanceChart = ({ weeklySchedule }: WorkloadBalanceChartProps) => {
+  const toChartDayLabel = (key: string) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+      const parsed = parseISO(key);
+      if (isValid(parsed)) {
+        return format(parsed, "EEE");
+      }
+    }
+    return key.substring(0, 3);
+  };
+
   const calculateDayStats = (daySchedule: ScheduledTask[]) => {
     let focusedWork = 0;
     let breaks = 0;
@@ -30,7 +41,7 @@ export const WorkloadBalanceChart = ({ weeklySchedule }: WorkloadBalanceChartPro
   const chartData = Object.entries(weeklySchedule).map(([day, schedule]) => {
     const stats = calculateDayStats(schedule);
     return {
-      day: day.substring(0, 3), // Mon, Tue, Wed, etc.
+      day: toChartDayLabel(day),
       "Focused Work": stats.focusedWork,
       "Breaks": stats.breaks,
     };

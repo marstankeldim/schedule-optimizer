@@ -387,9 +387,13 @@ export const MonthlyCalendar = ({
 
   const getTasksForDay = (date: Date): ScheduledTask[] => {
     const dayName = format(date, "EEEE");
+    const dayKey = format(date, "yyyy-MM-dd");
     const today = new Date();
     
     if (Object.keys(weeklySchedule).length > 0) {
+      if (Object.prototype.hasOwnProperty.call(weeklySchedule, dayKey)) {
+        return weeklySchedule[dayKey] || [];
+      }
       return weeklySchedule[dayName] || [];
     }
     

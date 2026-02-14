@@ -3,12 +3,29 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.84.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-weekly-report-secret',
+};
+
+const isAuthorizedInternalRequest = (req: Request) => {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const jobSecret = Deno.env.get('WEEKLY_REPORT_JOB_SECRET') ?? '';
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const secretHeader = req.headers.get('x-weekly-report-secret')?.trim() ?? '';
+
+  return (serviceRoleKey && bearerToken === serviceRoleKey) || (jobSecret && secretHeader === jobSecret);
 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!isAuthorizedInternalRequest(req)) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
@@ -141,10 +158,12 @@ Return as JSON: {"summary": "text", "topRecommendations": ["rec1", "rec2", "rec3
       }
 
       // Trigger email sending (fire and forget)
+      const weeklyReportSecret = Deno.env.get('WEEKLY_REPORT_JOB_SECRET') ?? '';
       fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-weekly-report`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          ...(weeklyReportSecret ? { 'x-weekly-report-secret': weeklyReportSecret } : {}),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

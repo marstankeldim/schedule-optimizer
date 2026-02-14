@@ -2,12 +2,29 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-weekly-report-secret',
+};
+
+const isAuthorizedInternalRequest = (req: Request) => {
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const jobSecret = Deno.env.get('WEEKLY_REPORT_JOB_SECRET') ?? '';
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const secretHeader = req.headers.get('x-weekly-report-secret')?.trim() ?? '';
+
+  return (serviceRoleKey && bearerToken === serviceRoleKey) || (jobSecret && secretHeader === jobSecret);
 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!isAuthorizedInternalRequest(req)) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
